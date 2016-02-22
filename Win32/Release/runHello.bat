@@ -1,0 +1,1 @@
+Pylax.exe ..\..\Apps\Hello.pxa\Hello.px

@@ -1,0 +1,16 @@
+Python-3.5.1
+GTK
+Stuff
+Debug
+x64
+*.obj
+*.sdf
+*.exp
+*.pdb
+*.res
+*.log
+*.tlog
+*.idb
+*.pdb
+*.lastbuildstate
+__pycache__
