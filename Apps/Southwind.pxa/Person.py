@@ -9,7 +9,7 @@ def launch():
         pylax.message("Default", "Gratuliere")
         return "Hallo"
 
-    ds = pylax.DataSet("Person", "SELECT PersonID, FirstName, LastName, Picture FROM Person ORDER BY LastName DESC LIMIT 100;")
+    ds = pylax.Dynaset("Person", "SELECT PersonID, FirstName, LastName, Picture FROM Person ORDER BY LastName DESC LIMIT 100;")
     ds.autoColumn = ds.add_column("PersonID", int, format="{:,}", key=True)
     ds.add_column("FirstName", str, defaultFunction = nameColumn__default)
     ds.add_column("LastName", str, False, default = "Geschafft")
@@ -22,7 +22,7 @@ def launch():
     def entryFirstName__verify(widget, data):
         pylax.message("Nicht Geklückt! 品", "Gratuliere")
         return False
-    labelFormCaption = pylax.Label(form, 1, 1, 40, 20, dataSet=ds, column="LastName", visible=False)
+    labelFormCaption = pylax.Label(form, 1, 1, 40, 20, dynaset=ds, column="LastName", visible=False)
     labelFormCaption.captionClient = form # passes any assigment to property 'data' on to property 'caption' of the captionClient
 
     entrySearch = pylax.Entry(form, 70, 20, 160, 20, label = pylax.Label(form, 20, 20, 40, 20, "Search"))
@@ -30,21 +30,21 @@ def launch():
     ds.buttonSearch.on_click = buttonSearch__on_click
     ds.buttonSearch.defaultEnter = True
 
-    selectionTable = pylax.Table(form, 20, 70, -240, -55, dataSet=ds, label = pylax.Label(form, 20, 50, 90, 20, "Select:"))
+    selectionTable = pylax.Table(form, 20, 70, -240, -55, dynaset=ds, label = pylax.Label(form, 20, 50, 90, 20, "Select:"))
     selectionTable.add_column("First Name", 70, "FirstName") # title, width, dataset
     selectionTable.add_column("Last Name", 150, "LastName") # title, width, dataset
     selectionTable.add_column("ID", 130, "PersonID") # title, width, dataset
 
-    imagePicture = pylax.ImageView(form, -130, 20, 90, 80, dataSet=ds, column="Picture", dataType=bytes)
+    imagePicture = pylax.ImageView(form, -130, 20, 90, 80, dynaset=ds, column="Picture", dataType=bytes)
 
-    entryID = pylax.Entry(form, -130, 120, 120, 20, dataSet=ds, column="PersonID", dataType=int, label = pylax.Label(form, -230, 120, 90, 20, "ID"))
+    entryID = pylax.Entry(form, -130, 120, 120, 20, dynaset=ds, column="PersonID", dataType=int, label = pylax.Label(form, -230, 120, 90, 20, "ID"))
     entryID.editFormat="{:,}"
     entryID.alignHoriz = pylax.Align.left
 
-    entryFirstName = pylax.Entry(form, -130, 150, 120, 20, dataSet=ds, column="FirstName", dataType=str, label = pylax.Label(form, -230, 150, 90, 20, "First Name"))
+    entryFirstName = pylax.Entry(form, -130, 150, 120, 20, dynaset=ds, column="FirstName", dataType=str, label = pylax.Label(form, -230, 150, 90, 20, "First Name"))
     entryFirstName.verify = entryFirstName__verify
-    entryLastName = pylax.Entry(form, -130, 180, 120, 20, dataSet=ds, column="LastName", dataType=str, label = pylax.Label(form, -230, 180, 90, 20, "Last Name"))
-    comboBox = pylax.ComboBox(form, -130, 220, 120, 20, dataSet=ds, column="PersonID", label = pylax.Label(form, -230, 220, 90, 20, "PersonID"))
+    entryLastName = pylax.Entry(form, -130, 180, 120, 20, dynaset=ds, column="LastName", dataType=str, label = pylax.Label(form, -230, 180, 90, 20, "Last Name"))
+    comboBox = pylax.ComboBox(form, -130, 220, 120, 20, dynaset=ds, column="PersonID", label = pylax.Label(form, -230, 220, 90, 20, "PersonID"))
     comboBox.append("Zero", 0)
     comboBox.append("One", 1)
     comboBox.append("Two", 2)
@@ -69,7 +69,4 @@ def buttonSearch__on_click(self):
     else:
         #ds.query = "SELECT PersonID, FirstName, LastName, Picture FROM Person WHERE LastName LIKE :LastName;"
         r = ds.execute({"LastName": entrySearch.data}, "SELECT PersonID, FirstName, LastName, Picture FROM Person WHERE LastName LIKE :LastName;")
-
-
-
 

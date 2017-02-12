@@ -70,7 +70,7 @@ PxTable_add_column(PxTableObject* self, PyObject *args, PyObject *kwds)
 	static char *kwlist[] = { "caption", "width", "data", "type", "format", "widget", "autoSize", NULL };
 	int iWidth;
 	BOOL bAutoSize;
-	PyObject* pyCaption = NULL, *pyDataName = NULL, *pyDataSetColumn = NULL, *pyType = NULL, *pyFormat = NULL, *pyWidget = NULL;
+	PyObject* pyCaption = NULL, *pyDataName = NULL, *pyDynasetColumn = NULL, *pyType = NULL, *pyFormat = NULL, *pyWidget = NULL;
 	PxTableColumnObject* pyColumn = NULL;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwds, "Oi|OOOOp", kwlist,
@@ -89,11 +89,11 @@ PxTable_add_column(PxTableObject* self, PyObject *args, PyObject *kwds)
 	}
 
 	if (pyDataName) {
-		if ((pyDataSetColumn = PyDict_GetItem(self->pyDataSet->pyColumns, pyDataName)) == NULL)
-			return PyErr_Format(PyExc_ValueError, "DataColumn '%s' does not exist in bound DataSet'.", PyUnicode_AsUTF8(pyDataName));
+		if ((pyDynasetColumn = PyDict_GetItem(self->pyDynaset->pyColumns, pyDataName)) == NULL)
+			return PyErr_Format(PyExc_ValueError, "DataColumn '%s' does not exist in bound Dynaset'.", PyUnicode_AsUTF8(pyDataName));
 
-		PyObject* pyDataType = PyStructSequence_GetItem(pyDataSetColumn, PXDATASETCOLUMN_TYPE);
-		if (pyType){
+		PyObject* pyDataType = PyStructSequence_GetItem(pyDynasetColumn, PXDYNASETCOLUMN_TYPE);
+		if (pyType) {
 			if (pyType != pyDataType) {
 				PyErr_SetString(PyExc_ValueError, "Parameter 4 ('type') is conflicting with data type of bound DataColumn.");
 				return NULL;
@@ -105,11 +105,11 @@ PxTable_add_column(PxTableObject* self, PyObject *args, PyObject *kwds)
 		}
 
 		if (!pyFormat) {
-			pyFormat = PyStructSequence_GetItem(pyDataSetColumn, PXDATASETCOLUMN_FORMAT);
+			pyFormat = PyStructSequence_GetItem(pyDynasetColumn, PXDYNASETCOLUMN_FORMAT);
 		}
 	}
 
-	if (pyType){
+	if (pyType) {
 		if (!PyType_Check(pyType)) {
 			PyErr_SetString(PyExc_TypeError, "Parameter 4 ('type') must be a Type Object.");
 			return NULL;
@@ -119,7 +119,7 @@ PxTable_add_column(PxTableObject* self, PyObject *args, PyObject *kwds)
 		pyType = (PyObject*)&PyUnicode_Type;
 	}
 
-	if (pyFormat)  {
+	if (pyFormat) {
 		if (pyFormat != Py_None && !PyUnicode_Check(pyFormat)) {
 			PyErr_SetString(PyExc_TypeError, "Parameter 5 ('format') must be a string.");
 			return NULL;
@@ -134,10 +134,10 @@ PxTable_add_column(PxTableObject* self, PyObject *args, PyObject *kwds)
 	if (!(pyColumn = PyObject_CallObject((PyObject*)&PxTableColumnType, NULL)))
 		return NULL;
 	//XX(pyColumn);
-	Py_INCREF(pyDataSetColumn);
+	Py_INCREF(pyDynasetColumn);
 	Py_INCREF(pyType);
 	Py_INCREF(pyFormat);
-	pyColumn->pyDataSetColumn = pyDataSetColumn;
+	pyColumn->pyDynasetColumn = pyDynasetColumn;
 	pyColumn->pyType = pyType;
 	pyColumn->pyFormat = pyFormat;
 	pyColumn->iIndex = (int)self->nColumns++;
@@ -153,7 +153,7 @@ PxTable_add_column(PxTableObject* self, PyObject *args, PyObject *kwds)
 		pyColumn->pyWidget = (PxWidgetObject*)pyWidget;
 		pyColumn->pyWidget->pyParent = (PxWidgetObject*)self;
 		pyColumn->pyWidget->pyWindow = self->pyWindow;
-		pyColumn->pyWidget->pyDataSet = self->pyDataSet;
+		pyColumn->pyWidget->pyDynaset = self->pyDynaset;
 		pyColumn->pyWidget->pyDataColumn = self->pyDataColumn;
 	}
 
@@ -181,7 +181,7 @@ PxTable_add_column(PxTableObject* self, PyObject *args, PyObject *kwds)
 static PyObject *
 PxTable_refresh(PxTableObject* self)
 {
-	PyObject* pyData = NULL, *pyRow, *pyDataSetColumn = NULL, *pyText = NULL;
+	PyObject* pyData = NULL, *pyRow, *pyDynasetColumn = NULL, *pyText = NULL;
 	PxTableColumnObject* pyTableColumn = NULL;
 	Py_ssize_t nColumn;
 	int iRow, iColumn;
@@ -195,14 +195,14 @@ PxTable_refresh(PxTableObject* self)
 
 	SendMessage(self->hWin, LVM_DELETEALLITEMS, 0, 0);
 
-	for (iRow = 0; iRow < self->pyDataSet->nRows; iRow++) {
-		pyRow = PyList_GetItem(self->pyDataSet->pyRows, (Py_ssize_t)iRow);
+	for (iRow = 0; iRow < self->pyDynaset->nRows; iRow++) {
+		pyRow = PyList_GetItem(self->pyDynaset->pyRows, (Py_ssize_t)iRow);
 
-		if (PyStructSequence_GetItem(pyRow, PXDATASETROW_DELETE) == Py_True)
+		if (PyStructSequence_GetItem(pyRow, PXDYNASETROW_DELETE) == Py_True)
 			lvItem.pszText = L"Х";
-		else if (PyStructSequence_GetItem(pyRow, PXDATASETROW_NEW) == Py_True)
+		else if (PyStructSequence_GetItem(pyRow, PXDYNASETROW_NEW) == Py_True)
 			lvItem.pszText = L"☼";
-		else if (PyStructSequence_GetItem(pyRow, PXDATASETROW_DATAOLD) != Py_None)
+		else if (PyStructSequence_GetItem(pyRow, PXDYNASETROW_DATAOLD) != Py_None)
 			lvItem.pszText = L"Ҩ";
 		else
 			lvItem.pszText = L"";
@@ -219,8 +219,8 @@ PxTable_refresh(PxTableObject* self)
 		{
 			//ShowInts(L"X", iRow, iColumn);
 			pyTableColumn = (PxTableColumnObject*)PyList_GetItem(self->pyColumns, (Py_ssize_t)iColumn - 1);
-			pyDataSetColumn = pyTableColumn->pyDataSetColumn;
-			pyData = PxDataSet_GetData(self->pyDataSet, (Py_ssize_t)iRow, pyDataSetColumn);
+			pyDynasetColumn = pyTableColumn->pyDynasetColumn;
+			pyData = PxDynaset_GetData(self->pyDynaset, (Py_ssize_t)iRow, pyDynasetColumn);
 			if (!(pyText = PxFormatData(pyData, pyTableColumn->pyFormat)))
 				return NULL;
 
@@ -243,18 +243,18 @@ PxTable_refresh(PxTableObject* self)
 static PyObject *
 PxTable_refresh_cell(PxTableObject* self, PyObject *args)
 {
-	PyObject* pyData = NULL, *pyDataSetColumn = NULL, *pyText = NULL;
+	PyObject* pyData = NULL, *pyDynasetColumn = NULL, *pyText = NULL;
 	PxTableColumnObject* pyTableColumn = NULL;
 	Py_ssize_t nColumn, nRow;
 	OutputDebugString(L"\n-Table refresh cell\n");
 
-	if (!PyArg_ParseTuple(args, "nO", &nRow, &pyDataSetColumn)) {
+	if (!PyArg_ParseTuple(args, "nO", &nRow, &pyDynasetColumn)) {
 		return NULL;
 	}
 
 	for (nColumn = 0; nColumn < self->nColumns; nColumn++) {
 		pyTableColumn = (PxTableColumnObject*)PyList_GetItem(self->pyColumns, nColumn);
-		if (pyTableColumn->pyDataSetColumn == pyDataSetColumn)
+		if (pyTableColumn->pyDynasetColumn == pyDynasetColumn)
 			break;
 		pyTableColumn = NULL;
 	}
@@ -262,7 +262,7 @@ PxTable_refresh_cell(PxTableObject* self, PyObject *args)
 	if (pyTableColumn == NULL)
 		Py_RETURN_FALSE;
 
-	pyData = PxDataSet_GetData(self->pyDataSet, nRow, pyDataSetColumn);
+	pyData = PxDynaset_GetData(self->pyDynaset, nRow, pyDynasetColumn);
 	if (!(pyText = PxFormatData(pyData, pyTableColumn->pyFormat)))
 		return NULL;
 
@@ -289,8 +289,8 @@ PxTable_refresh_cell(PxTableObject* self, PyObject *args)
 static PyObject *
 PxTable_refresh_row_pointer(PxTableObject* self, PyObject *args)
 {
-	ListView_SetItemState(self->hWin, (INT)self->pyDataSet->nRow, LVIS_FOCUSED, LVIS_FOCUSED);// LVIS_FOCUSED | LVIS_SELECTED, LVIS_FOCUSED | LVIS_SELECTED);
-	//ListView_SetSelectionMark(self->hWin, (INT)self->pyDataSet->nRow);
+	ListView_SetItemState(self->hWin, (INT)self->pyDynaset->nRow, LVIS_FOCUSED, LVIS_FOCUSED);// LVIS_FOCUSED | LVIS_SELECTED, LVIS_FOCUSED | LVIS_SELECTED);
+	//ListView_SetSelectionMark(self->hWin, (INT)self->pyDynaset->nRow);
 	Py_RETURN_NONE;
 }
 /*
@@ -298,7 +298,7 @@ BOOL
 PxTable_SelectionChanged(PxTableObject* self, int iRow)
 {
 //ShowLastError(L"PxTable_SelectionChanged");
-if (PxDataSet_SetRow(self->pyDataSet, (Py_ssize_t)iRow)) {
+if (PxDynaset_SetRow(self->pyDynaset, (Py_ssize_t)iRow)) {
 // set blue bar
 return TRUE;
 }
@@ -314,7 +314,7 @@ static int
 PxTable_setattro(PxTableObject* self, PyObject* pyAttributeName, PyObject *pyValue)
 {
 	if (PyUnicode_Check(pyAttributeName)) {
-		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "showRowIndicator") == 0) 	{
+		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "showRowIndicator") == 0) {
 			if (pyValue == Py_True) {
 				ListView_SetColumnWidth(self->hWin, 0, PxTABLE_ROW_INDICATOR_WIDTH);
 				self->bShowRecordIndicator = TRUE;
@@ -413,7 +413,7 @@ LRESULT CALLBACK PxTableProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			if ((pNMListView->uChanged & LVIF_STATE) && (pNMListView->uNewState & LVNI_SELECTED))
 			{
 				//if (!PxTable_SelectionChanged(self, pNMListView->iItem)) {
-				if (!PxDataSet_SetRow(self->pyDataSet, (Py_ssize_t)pNMListView->iItem))
+				if (!PxDynaset_SetRow(self->pyDynaset, (Py_ssize_t)pNMListView->iItem))
 					ShowPythonError();
 			}
 
@@ -429,11 +429,11 @@ LRESULT CALLBACK PxTableProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			*/
 		}
 		else if (nmhdr->code == LVN_ITEMCHANGING) {
-			if (self->pyDataSet->bFrozen)
+			if (self->pyDynaset->bFrozen)
 				return FALSE;
 		}
 		else if (nmhdr->code == NM_DBLCLK) {
-			if (self->pyDataSet->bFrozen)
+			if (self->pyDynaset->bFrozen)
 				return 0;
 			else {
 				iIndex = (int)SendMessage(self->hWin, LVM_GETNEXTITEM, -1, LVNI_SELECTED);
@@ -447,7 +447,7 @@ LRESULT CALLBACK PxTableProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		}
 
 		else if (nmhdr->code == NM_CLICK) {
-			if (self->pyDataSet->bFrozen)
+			if (self->pyDynaset->bFrozen)
 				return 0;
 			/*else {
 				iIndex = (int)SendMessage(self->hWin, LVM_GETNEXTITEM, -1, LVNI_FOCUSED);
@@ -502,12 +502,12 @@ LRESULT CALLBACK PxTableProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		itemclicked.pt.x = x;
 		itemclicked.pt.y = y;
 		int lResult = ListView_SubItemHitTest(self->hWin, &itemclicked);
-		if (lResult != -1){
-			if (!PxDataSet_SetRow(self->pyDataSet, (Py_ssize_t)itemclicked.iItem)) {
+		if (lResult != -1) {
+			if (!PxDynaset_SetRow(self->pyDynaset, (Py_ssize_t)itemclicked.iItem)) {
 				ShowPythonError();
 				return 0;
 			}
-			if (self->pyDataSet->bLocked)
+			if (self->pyDynaset->bLocked)
 				break;
 
 			//ShowInts(L"Subitem C", itemclicked.iItem, itemclicked.iSubItem);
@@ -540,7 +540,7 @@ PxTableColumn_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 
 	if (self != NULL) {
 		self->pyTable = NULL;
-		self->pyDataSetColumn = NULL;
+		self->pyDynasetColumn = NULL;
 		self->pyType = NULL;
 		self->pyFormat = NULL;
 		self->pyWidget = NULL;
@@ -558,7 +558,7 @@ PxTableColumn_dealloc(PxTableColumnObject* self)
 }
 
 static PyMemberDef PxTableColumn_members[] = {
-	{ "data", T_OBJECT_EX, offsetof(PxTableColumnObject, pyDataSetColumn), READONLY, "Bound DataSetColumn" },
+	{ "data", T_OBJECT_EX, offsetof(PxTableColumnObject, pyDynasetColumn), READONLY, "Bound DynasetColumn" },
 	{ "type", T_OBJECT_EX, offsetof(PxTableColumnObject, pyType), READONLY, "Data type" },
 	{ "format", T_OBJECT_EX, offsetof(PxTableColumnObject, pyFormat), READONLY, "Display format" },
 	{ "widget", T_OBJECT_EX, offsetof(PxTableColumnObject, pyWidget), READONLY, "Edit widget" },

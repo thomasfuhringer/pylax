@@ -152,7 +152,7 @@
     <ClCompile Include="ButtonObject.c" />
     <ClCompile Include="CanvasObject.c" />
     <ClCompile Include="ComboBoxObject.c" />
-    <ClCompile Include="DataSetObject.c" />
+    <ClCompile Include="DynasetObject.c" />
     <ClCompile Include="EntryObject.c" />
     <ClCompile Include="FormObject.c" />
     <ClCompile Include="ImageViewObject.c" />
@@ -174,7 +174,7 @@
     <ClInclude Include="ButtonObject.h" />
     <ClInclude Include="CanvasObject.h" />
     <ClInclude Include="ComboBoxObject.h" />
-    <ClInclude Include="DataSetObject.h" />
+    <ClInclude Include="DynasetObject.h" />
     <ClInclude Include="EntryObject.h" />
     <ClInclude Include="FormObject.h" />
     <ClInclude Include="ImageViewObject.h" />

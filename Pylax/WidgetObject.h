@@ -23,7 +23,7 @@
 		PyObject* pyFormatEdit; \
 		PyObject* pyAlignHorizontal; \
 		PyObject* pyAlignVertical; \
-		PxDataSetObject* pyDataSet; \
+		PxDynasetObject* pyDynaset; \
 		PyObject* pyDataColumn; \
 		PyObject* pyVerifyCB;
 

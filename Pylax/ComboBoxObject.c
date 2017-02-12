@@ -198,8 +198,8 @@ BOOL
 PxComboBox_Changed(PxComboBoxObject* self)
 {
 //MessageBox(NULL, L"Changed!", L"Error", MB_ICONERROR);
-if (self->pyDataSet)
-PxDataSet_Freeze(self->pyDataSet);
+if (self->pyDynaset)
+PxDynaset_Freeze(self->pyDynaset);
 self->bDirty = TRUE;
 return TRUE;// MessageBox(NULL, L"Changed!", L"Error", MB_ICONERROR);
 }

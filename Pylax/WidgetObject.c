@@ -26,7 +26,7 @@ PxWidget_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 		self->pyDataType = NULL;
 		self->pyFormat = NULL;
 		self->pyFormatEdit = NULL;
-		self->pyDataSet = NULL;
+		self->pyDynaset = NULL;
 		self->pyDataColumn = NULL;
 		self->pyLabel = NULL;
 		self->pyAlignHorizontal = NULL;
@@ -41,10 +41,10 @@ PxWidget_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 static int
 PxWidget_init(PxWidgetObject* self, PyObject *args, PyObject *kwds)
 {
-	static char *kwlist[] = { "parent", "left", "top", "right", "bottom", "caption", "dataSet", "column", "dataType", "format", "label", "visible", NULL };
+	static char *kwlist[] = { "parent", "left", "top", "right", "bottom", "caption", "dynaset", "column", "dataType", "format", "label", "visible", NULL };
 	PyObject* pyParent = NULL, *pyCaption = NULL, *pyDataColumn = NULL, *pyFormat = NULL, *pyLabel = NULL, *tmp = NULL;
 	PyTypeObject* pyDataType = NULL;
-	PxDataSetObject* pyDataSet = NULL;
+	PxDynasetObject* pyDynaset = NULL;
 	gArgs.bVisible = PyObject_TypeCheck(self, &PxWindowType) ? FALSE : TRUE;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|iiiiOOOOOOp", kwlist,
@@ -54,7 +54,7 @@ PxWidget_init(PxWidgetObject* self, PyObject *args, PyObject *kwds)
 		&self->rc.right,
 		&self->rc.bottom,
 		&pyCaption,
-		&pyDataSet,
+		&pyDynaset,
 		&pyDataColumn,
 		&pyDataType,
 		&pyFormat,
@@ -86,20 +86,20 @@ PxWidget_init(PxWidgetObject* self, PyObject *args, PyObject *kwds)
 	else
 		gArgs.pyCaption = NULL;
 
-	if (pyDataSet) {
-		tmp = self->pyDataSet;
-		if (!PyObject_TypeCheck(pyDataSet, &PxDataSetType)) {
-			PyErr_SetString(PyExc_TypeError, "Parameter 3 ('dataSet') must be a DataSet.");
+	if (pyDynaset) {
+		tmp = self->pyDynaset;
+		if (!PyObject_TypeCheck(pyDynaset, &PxDynasetType)) {
+			PyErr_SetString(PyExc_TypeError, "Parameter 3 ('dynaset') must be a Dynaset.");
 			return -1;
 		}
 		if (pyDataColumn == NULL && !PyObject_TypeCheck(self, &PxTableType) && !PyObject_TypeCheck(self, &PxFormType) && !PyObject_TypeCheck(self, &PxWindowType)) {
 			PyErr_SetString(PyExc_RuntimeError, "No data column provided.");
 			return -1;
 		}
-		Py_INCREF(pyDataSet);
-		self->pyDataSet = (PxDataSetObject*)pyDataSet;
+		Py_INCREF(pyDynaset);
+		self->pyDynaset = (PxDynasetObject*)pyDynaset;
 		Py_XDECREF(tmp);
-		if (!PxDataSet_AddWidget(self->pyDataSet, self))
+		if (!PxDynaset_AddWidget(self->pyDynaset, self))
 			return -1;
 	}
 
@@ -110,15 +110,15 @@ PxWidget_init(PxWidgetObject* self, PyObject *args, PyObject *kwds)
 			return -1;
 		}
 		else {
-			PyObject* pyColumn = PyDict_GetItem(self->pyDataSet->pyColumns, pyDataColumn);
+			PyObject* pyColumn = PyDict_GetItem(self->pyDynaset->pyColumns, pyDataColumn);
 			if (pyColumn == NULL) {
 				PyErr_SetString(PyExc_TypeError, "Parameter 4 ('column') does not exist.");
-				PyErr_Format(PyExc_TypeError, "Column '%.200s' does not exist in DataSet '%.200s'.", PyUnicode_AsUTF8(pyDataColumn), PyUnicode_AsUTF8(self->pyDataSet));
+				PyErr_Format(PyExc_TypeError, "Column '%.200s' does not exist in Dynaset '%.200s'.", PyUnicode_AsUTF8(pyDataColumn), PyUnicode_AsUTF8(self->pyDynaset));
 				return -1;
 			}
 			self->pyDataColumn = pyColumn;
-			self->pyDataType = (PyTypeObject*)PyStructSequence_GetItem(pyColumn, PXDATASETCOLUMN_TYPE);
-			self->pyFormat = PyStructSequence_GetItem(pyColumn, PXDATASETCOLUMN_FORMAT);
+			self->pyDataType = (PyTypeObject*)PyStructSequence_GetItem(pyColumn, PXDYNASETCOLUMN_TYPE);
+			self->pyFormat = PyStructSequence_GetItem(pyColumn, PXDYNASETCOLUMN_FORMAT);
 			Py_INCREF(self->pyDataColumn);
 			Py_INCREF(self->pyDataType);
 			Py_INCREF(self->pyFormat);
@@ -211,7 +211,7 @@ PxWidget_dealloc(PxWidgetObject* self)
 	Py_XDECREF(self->pyAlignHorizontal);
 	Py_XDECREF(self->pyAlignVertical);
 	Py_XDECREF(self->pyLabel);
-	Py_XDECREF(self->pyDataSet);
+	Py_XDECREF(self->pyDynaset);
 	Py_XDECREF(self->pyDataColumn);
 
 	Py_TYPE(self)->tp_free((PyObject*)self);
@@ -388,11 +388,11 @@ PxWidget_move(PxWidgetObject* self, PyObject *args, PyObject *kwds)
 PyObject* // borrowed ref
 PxWidget_PullData(PxWidgetObject* self)
 {
-	if (self->pyDataSet && self->pyDataColumn) {
-		if (self->pyDataSet->nRow == -1)
+	if (self->pyDynaset && self->pyDataColumn) {
+		if (self->pyDynaset->nRow == -1)
 			return Py_None;//Py_RETURN_NONE;
 		else
-			return PxDataSet_GetData(self->pyDataSet, self->pyDataSet->nRow, self->pyDataColumn);
+			return PxDynaset_GetData(self->pyDynaset, self->pyDynaset->nRow, self->pyDataColumn);
 	}
 	return NULL;
 }
@@ -495,13 +495,13 @@ PxWidget_SetData(PxWidgetObject* self, PyObject* pyData)
 	self->pyData = pyData;
 	Py_XDECREF(tmp);*/
 	PxAttachObject(&self->pyData, pyData, TRUE);
-	OutputDebugString(self->pyDataSet && self->pyDataSet->bBroadcasting ? L"\n*---- PxWidget_SetData Broadcastin" : L"\n*---- PxWidget_SetData No BC");
+	OutputDebugString(self->pyDynaset && self->pyDynaset->bBroadcasting ? L"\n*---- PxWidget_SetData Broadcastin" : L"\n*---- PxWidget_SetData No BC");
 
-	if (self->pyDataSet && !self->pyDataSet->bBroadcasting && self->pyDataColumn && self->pyDataSet->nRow != -1) {
+	if (self->pyDynaset && !self->pyDynaset->bBroadcasting && self->pyDataColumn && self->pyDynaset->nRow != -1) {
 		OutputDebugString(L"\n*---- PxWidget_SetData BCO");
-		if (!PxDataSet_SetData(self->pyDataSet, self->pyDataSet->nRow, self->pyDataColumn, self->pyData))
+		if (!PxDynaset_SetData(self->pyDynaset, self->pyDynaset->nRow, self->pyDataColumn, self->pyData))
 			return FALSE;
-		if (!PxDataSet_Thaw(self->pyDataSet))
+		if (!PxDynaset_Thaw(self->pyDynaset))
 			return FALSE;
 	}
 	return TRUE;
@@ -521,7 +521,7 @@ static PyMemberDef PxWidget_members[] = {
 	{ "top", T_INT, offsetof(PxWidgetObject, rc.top), READONLY, "Distance from top edge of parent, if negative from bottom" },
 	{ "right", T_INT, offsetof(PxWidgetObject, rc.right), READONLY, "Distance from left or, if zero or negative, from right edge of parent of right edge" },
 	{ "bottom", T_INT, offsetof(PxWidgetObject, rc.bottom), READONLY, "Distance from top or, if zero or negative, from bottom edge of parent of bottom edge" },
-	{ "dataSet", T_OBJECT, offsetof(PxWidgetObject, pyDataSet), READONLY, "Bound DataSet" },
+	{ "dynaset", T_OBJECT, offsetof(PxWidgetObject, pyDynaset), READONLY, "Bound Dynaset" },
 	{ "dataColumn", T_OBJECT, offsetof(PxWidgetObject, pyDataColumn), READONLY, "Connected DataColumn" },
 	{ "dataType", T_OBJECT, offsetof(PxWidgetObject, pyDataType), READONLY, "Data type of connected DataColumn" },
 	{ "editFormat", T_OBJECT, offsetof(PxWidgetObject, pyFormatEdit), 0, "Format when editing" },

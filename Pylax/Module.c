@@ -1,6 +1,7 @@
 ﻿// Module.c  | Pylax © 2016 by Thomas Führinger
 #include <Pylax.h>
 
+
 // in main.c
 PyObject* Pylax_message(PyObject *self, PyObject *args);
 PyObject* Pylax_ask(PyObject *self, PyObject *args, PyObject *kwds);
@@ -42,7 +43,7 @@ PyInit_pylax(void)
 	if (!WindowClass_Init())
 		return NULL;
 
-	if (PyType_Ready(&PxDataSetType) < 0)
+	if (PyType_Ready(&PxDynasetType) < 0)
 		return NULL;
 
 	if (PyType_Ready(&PxMenuType) < 0)
@@ -120,11 +121,11 @@ PyInit_pylax(void)
 	if (PyType_Ready(&PxTableColumnType) < 0)
 		return NULL;
 
-	if (!PxDataSetTypes_Init())
+	if (!PxDynasetTypes_Init())
 		return NULL;
 
 
-	Py_INCREF(&PxDataSetType);
+	Py_INCREF(&PxDynasetType);
 	Py_INCREF(&PxImageType);
 	Py_INCREF(&PxMenuType);
 	Py_INCREF(&PxMenuItemType);
@@ -144,7 +145,7 @@ PyInit_pylax(void)
 	Py_INCREF(&PxTableType);
 	Py_INCREF(&PxTableColumnType);
 
-	PyModule_AddObject(pyModule, "DataSet", (PyObject *)&PxDataSetType);
+	PyModule_AddObject(pyModule, "Dynaset", (PyObject *)&PxDynasetType);
 	PyModule_AddObject(pyModule, "Image", (PyObject *)&PxImageType);
 	PyModule_AddObject(pyModule, "Menu", (PyObject *)&PxMenuType);
 	PyModule_AddObject(pyModule, "MenuItem", (PyObject *)&PxMenuItemType);
@@ -170,8 +171,8 @@ PyInit_pylax(void)
 		return NULL;
 
 	// named tuples
-	PyModule_AddObject(pyModule, "DataSetColumn", (PyObject*)&PxDataSetColumnType);
-	PyModule_AddObject(pyModule, "DataSetRow", (PyObject*)&PxDataSetRowType);
+	PyModule_AddObject(pyModule, "DynasetColumn", (PyObject*)&PxDynasetColumnType);
+	PyModule_AddObject(pyModule, "DynasetRow", (PyObject*)&PxDynasetRowType);
 
 	// enumerations
 	PyObject* pyArgs = Py_BuildValue("(ss)", "Align", "left right center top bottom block");

@@ -45,7 +45,7 @@ PxEntry_init(PxEntryObject *self, PyObject *args, PyObject *kwds)
 		if (!PxWidget_SetCaption((PxWidgetObject*)self, gArgs.pyCaption))
 			return -1;
 	SendMessage(self->hWin, WM_SETFONT, (WPARAM)g.hfDefaultFont, MAKELPARAM(FALSE, 0));
-	if (self->pyDataSet)
+	if (self->pyDynaset)
 		//SendMessage(self->hWin, EM_SETREADONLY, TRUE, 0);
 		EnableWindow(self->hWin, FALSE);
 	if (self->pyParent == NULL)
@@ -98,10 +98,10 @@ static PyObject*  // new ref
 PxEntry_refresh(PxEntryObject* self)
 {
 	OutputDebugString(L"\n*---- PxEntry_refresh");
-	if (self->pyDataSet == NULL)
+	if (self->pyDynaset == NULL)
 		Py_RETURN_TRUE;
 
-	if (self->pyDataSet->nRow == -1) {
+	if (self->pyDynaset->nRow == -1) {
 		if (!PxEntry_SetData(self, Py_None))
 			return NULL;
 		//SendMessage(self->hWin, EM_SETREADONLY, TRUE, 0);
@@ -111,8 +111,8 @@ PxEntry_refresh(PxEntryObject* self)
 		PyObject *pyData = PxWidget_PullData((PxWidgetObject*)self);
 		if (pyData && !PxEntry_SetData(self, pyData))
 			return NULL;
-		//SendMessage(self->hWin, EM_SETREADONLY, self->bReadOnly || self->pyDataSet->bLocked, 0);
-		EnableWindow(self->hWin, !(self->bReadOnly || self->pyDataSet->bLocked));
+		//SendMessage(self->hWin, EM_SETREADONLY, self->bReadOnly || self->pyDynaset->bLocked, 0);
+		EnableWindow(self->hWin, !(self->bReadOnly || self->pyDynaset->bLocked));
 	}
 	Py_RETURN_TRUE;
 }
@@ -122,7 +122,7 @@ PxEntry_RepresentCell(PxEntryObject* self)
 {
 	RECT rcSubItem;
 	PxTableObject* pyTable = ((PxTableColumnObject*)self->pyParent)->pyTable;
-	ListView_GetSubItemRect(pyTable->hWin, (int)self->pyDataSet->nRow, ((PxTableColumnObject*)self->pyParent)->iIndex + 1, LVIR_BOUNDS, &rcSubItem);
+	ListView_GetSubItemRect(pyTable->hWin, (int)self->pyDynaset->nRow, ((PxTableColumnObject*)self->pyParent)->iIndex + 1, LVIR_BOUNDS, &rcSubItem);
 	MoveWindow(self->hWin, rcSubItem.left, rcSubItem.top, rcSubItem.right - rcSubItem.left, rcSubItem.bottom - rcSubItem.top, TRUE);
 	PyObject* pyResult = PxEntry_refresh(self);
 	if (pyResult == NULL)
@@ -194,8 +194,8 @@ PxEntry_Changed(PxEntryObject* self)
 {
 return TRUE;
 //MessageBox(NULL, L"Changed!", L"Error", MB_ICONERROR);
-if (!self->bDirty && self->pyDataSet)
-PxDataSet_Freeze(self->pyDataSet);
+if (!self->bDirty && self->pyDynaset)
+PxDynaset_Freeze(self->pyDynaset);
 self->bDirty = TRUE;
 return TRUE;// MessageBox(NULL, L"Changed!", L"Error", MB_ICONERROR);
 }*/
@@ -271,7 +271,7 @@ PxEntry_setattro(PxEntryObject* self, PyObject* pyAttributeName, PyObject *pyVal
 			self->pyAlignHorizontal = pyValue;
 			return 0;
 		}
-		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "on_click_button") == 0) 	{
+		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "on_click_button") == 0) {
 			if (PyCallable_Check(pyValue)) {
 				Py_XINCREF(pyValue);
 				Py_XDECREF(self->pyOnClickButtonCB);

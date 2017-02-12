@@ -18,7 +18,7 @@ typedef struct _PxTableColumnObject
 {
 	PyObject_HEAD
 		PxTableObject* pyTable;
-	PyObject* pyDataSetColumn;
+	PyObject* pyDynasetColumn;
 	int iIndex;
 	PyObject* pyType;
 	PyObject* pyFormat;

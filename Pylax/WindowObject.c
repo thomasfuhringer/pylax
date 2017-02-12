@@ -346,7 +346,7 @@ PxWindow_setattro(PxWindowObject* self, PyObject* pyAttributeName, PyObject *pyV
 			return PxWindow_SetCaption(self, pyValue) ? 0 : -1;
 		}
 		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "data") == 0) {
-			// assigning a key dict here should make the form jump to the record if it is bound to a DataSet
+			// assigning a key dict here should make the form jump to the record if it is bound to a Dynaset
 			PyErr_SetString(PyExc_NotImplementedError, "Searching still not available.");
 			return -1;
 		}
@@ -386,9 +386,9 @@ PxWindow_getattro(PxWindowObject* self, PyObject* pyAttributeName)
 	if (pyResult == NULL && PyErr_ExceptionMatches(PyExc_AttributeError) && PyUnicode_Check(pyAttributeName)) {
 		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "data") == 0) {
 			PyErr_Clear();
-			if (self->pyDataSet != NULL && self->pyDataSet->nRow > -1)
-				//return PxDataSet_GetKeyDict(self->pyDataSet, self->pyDataSet->nRow);
-				return PxDataSet_GetRowDataDict(self->pyDataSet, self->pyDataSet->nRow, FALSE);
+			if (self->pyDynaset != NULL && self->pyDynaset->nRow > -1)
+				//return PxDynaset_GetKeyDict(self->pyDynaset, self->pyDynaset->nRow);
+				return PxDynaset_GetRowDataDict(self->pyDynaset, self->pyDynaset->nRow, FALSE);
 			else
 				Py_RETURN_NONE;
 		}
@@ -651,12 +651,12 @@ PxWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		if (iR == 0)
 			return 0;
 		else if (iR == -1) {
-			if (self->pyDataSet && (self->pyDataSet->bDirty || self->pyDataSet->bFrozen)) {
+			if (self->pyDynaset && (self->pyDynaset->bDirty || self->pyDynaset->bFrozen)) {
 				int iSave = MessageBox(self->hWin, L"Save changes?", L"Pending changes", MB_YESNOCANCEL | MB_ICONQUESTION);
 				if (iSave == IDCANCEL)
 					return 0;
 				else if (iSave == IDYES)
-					if (PxDataSet_Save(self->pyDataSet) == -1)
+					if (PxDynaset_Save(self->pyDynaset) == -1)
 						return 0;
 			}
 		}

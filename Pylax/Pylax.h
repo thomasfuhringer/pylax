@@ -70,7 +70,7 @@
 
 // Pylax Classes
 #include "Version.h"
-#include "DataSetObject.h"
+#include "DynasetObject.h"
 #include "ImageObject.h"
 #include "MenuObject.h"
 #include "WidgetObject.h"
