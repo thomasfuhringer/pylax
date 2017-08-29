@@ -6,7 +6,7 @@ selectorEntrySearch = None
 
 def launch():
     global ds, entrySearch
-        
+
     ds = pylax.Dynaset("LE", "SELECT le.LeID, le.Name, le.Description, le.Logo, le.Parent, p.Name AS ParentName FROM LE LEFT JOIN LE AS p ON le.Parent=p.LeID WHERE le.Name LIKE :Name OR le.LeID = :Name ORDER BY le.Name DESC LIMIT 100;")
     ds.autoColumn = ds.add_column("LeID", int, format="{:,}", key=True)
     ds.add_column("Name")
@@ -22,9 +22,9 @@ def launch():
     labelFormCaption = pylax.Label(form, 1, 1, 40, 20, dynaset=ds, column="Name", visible=False)
     labelFormCaption.captionClient = form # passes any assigment to property 'data' on to property 'caption' of the captionClient
 
-    entrySearch = pylax.Entry(form, 70, 20, 160, 20, label = pylax.Label(form, 20, 20, 40, 20, "Search")) 
+    entrySearch = pylax.Entry(form, 70, 20, 160, 20, label = pylax.Label(form, 20, 20, 40, 20, "Search"))
     entrySearch.data = "%"
-    entrySearch.focus_in()
+    #entrySearch.focus_in()
     #entrySearch.verify= entryS__verify
     #print(form.focus)
     ds.buttonSearch = pylax.Button(form, 240, 20, 60, 20, "Sea&rch")
@@ -33,8 +33,8 @@ def launch():
 
     selectionTable = pylax.Table(form, 20, 70, -240, -55, dynaset=ds, label = pylax.Label(form, 20, 50, 90, 20, "Select:"))
     selectionTable.add_column("ID", 60, "LeID") # title, width, dataset
-    selectionTable.add_column("Name", 130, "Name") 
-    selectionTable.add_column("Parent", 130, "ParentName", widget=pylax.Entry(None)) 
+    selectionTable.add_column("Name", 130, "Name")
+    selectionTable.add_column("Parent", 130, "ParentName", widget=pylax.Entry(None))
     #print(selectionTable.columns[2].widget)
 
     imagePicture = pylax.ImageView(form, -140, 20, 90, 80, dynaset=ds, column="Logo", dataType=bytes)
@@ -49,7 +49,7 @@ def launch():
     #entryParentName = pylax.Entry(form, -160, 210, 100, 20, dynaset=ds, column="ParentName")
     entryParent.verify = entryParent__verify
     entryParent.on_click_button = entryParent__on_click_button
-    
+
     ds.buttonNew = pylax.Button(form, -360, -40, 60, 20, "&New")
     ds.buttonEdit = pylax.Button(form, -290, -40, 60, 20, "&Edit")
     ds.buttonUndo = pylax.Button(form, -220, -40, 60, 20, "&Undo")
@@ -65,7 +65,7 @@ def buttonSearch__on_click(self):
     if r > 0:
         ds.row = 0
     print(ds.lastUpdateSQL)
-        
+
 def entryParent__verify(self):
     r=selector.dynaset.execute({"Name": self.inputString})
     if r == 1:
@@ -81,17 +81,17 @@ def entryParent__verify(self):
     else:
         pylax.message("Legal Entity '" + self.inputString + "' does not exist!", "Invalid Input")
         return False
-        
+
 def entryParent__on_click_button(self):
     if selector.run():
         self.data = selector.data["Name"]
         self.dynaset.set_data("Parent", selector.data["LeID"])
-        
+
 def ds__before_save(self):
     #pylax.message(ds.lastUpdateSQL)
     print("BS")
     return True
-        
+
 
 def create_selector_LegalEntity():
     global selectorEntrySearch
@@ -99,7 +99,7 @@ def create_selector_LegalEntity():
     ds.autoColumn = ds.add_column("LeID", int, key=True)
     ds.add_column("Name")
     ds.add_column("Description")
-    selector = pylax.Window(None,  30, 20, 480, 280, "Select Legal Entity", ds)
+    selector = pylax.Dialog(None,  30, 20, 480, 280, "Select Legal Entity", ds)
 
     selectorEntrySearch= pylax.Entry(selector, 20, 20, -90, 20)
     selectorEntrySearch.data = "%"
@@ -110,8 +110,8 @@ def create_selector_LegalEntity():
     table.add_column("Name", 150, "Name")
     table.add_column("ID", 30, "LeID")
     table.showRowIndicator = False
-    selector.buttonOK = ds.buttonOK = pylax.Button(selector, -130, -40, 50, 20, "OK")
-    selector.buttonCancel = pylax.Button(selector, -70, -40, 50, 20, "Cancel")
+    #selector.buttonOK = ds.buttonOK = pylax.Button(selector, -130, -40, 50, 20, "OK")
+    #selector.buttonCancel = pylax.Button(selector, -70, -40, 50, 20, "Cancel")
     r=ds.execute({"Name": "%"})
     return selector
 
@@ -120,9 +120,9 @@ def selectorSearchButton__on_click(self):
     r = ds.execute({"Name": selectorEntrySearch.data})
     if r > 0:
         ds.row = 0
-		
+
 def entryS__verify(self):
     pylax.message("Ver")
     return True
-        
+
 selector = create_selector_LegalEntity()

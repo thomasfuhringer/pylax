@@ -16,12 +16,12 @@ def orderMenuItem__on_click():
 def legalEntityMenuItem__on_click():
     LegalEntity.launch()   
 
-itemMenuItem = pylax.MenuItem("&Item", itemMenuItem__on_click)
+itemMenuItem = pylax.MenuItem("_Item", itemMenuItem__on_click)
 pylax.append_menu_item(itemMenuItem)
-personMenuItem = pylax.MenuItem("&Person", personMenuItem__on_click)
+personMenuItem = pylax.MenuItem("_Person", personMenuItem__on_click)
 pylax.append_menu_item(personMenuItem)
-pylax.append_menu_item(pylax.MenuItem("&Order", orderMenuItem__on_click))
-pylax.append_menu_item(pylax.MenuItem("&Legal Entity", legalEntityMenuItem__on_click))
+pylax.append_menu_item(pylax.MenuItem("_Order", orderMenuItem__on_click))
+pylax.append_menu_item(pylax.MenuItem("_Legal Entity", legalEntityMenuItem__on_click))
 
 legalEntityMenuItem__on_click()
 #orderMenuItem__on_click()

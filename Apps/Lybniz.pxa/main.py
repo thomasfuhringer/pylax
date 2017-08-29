@@ -8,7 +8,7 @@ dc = pylax.Widget.defaultCoordinate
 
 def newWindowMenuItem__on_click():
     form = pylax.Form(None, dc, dc, 640, 480, "Lybniz")
-    form.icon = pylax.Image("Lybniz.ico")
+    form.set_icon_from_file("Lybniz.ico")
 
     # GUI
     canvas = pylax.Canvas(form, 0, 110, 0, 0)
@@ -87,7 +87,7 @@ def newWindowMenuItem__on_click():
                 for i in range(canvasWidth):
                     x = graphX(i + 1)
                     try:
-                        y = eval(e[0])					
+                        y = eval(e[0])
                         yC = canvasY(y)
                     except:
                         yC = -1
@@ -105,8 +105,8 @@ def newWindowMenuItem__on_click():
         canvas.repaint()
 
     canvas.on_paint = canvas__on_paint
-    executeButton.on_click = executeButton__on_click    
+    executeButton.on_click = executeButton__on_click
 
-newWindowMenuItem = pylax.MenuItem("&New Window", newWindowMenuItem__on_click)
+newWindowMenuItem = pylax.MenuItem("New Window", newWindowMenuItem__on_click)
 pylax.append_menu_item(newWindowMenuItem)
 newWindowMenuItem__on_click()
