@@ -1078,11 +1078,9 @@ class Client(object):
 
         if self.exchange(msg):
             self.user = self.msg["ID"]
-            if self.public_key is not None:
-                key = pickle.dumps(self.public_key)
-            else:
-                key = None
-            self.cursor.execute("INSERT INTO Person (Site, PersonID, FirstName, LastName, Transcription, Handle, EMail, PublicKey) VALUES (?,?,?,?,?,?,?,?) ;", (self.site, self.user, first_name, last_name, transcription, handle, e_mail, key))
+            public_key = pickle.dumps(self.public_key) if self.public_key is not None else None
+            private_key = pickle.dumps(self.private_key) if self.private_key is not None else None
+            self.cursor.execute("INSERT INTO Person (Site, PersonID, FirstName, LastName, Transcription, Handle, EMail, Password, PublicKey, PrivateKey) VALUES (?,?,?,?,?,?,?,?,?,?) ;", (self.site, self.user, first_name, last_name, transcription, handle, e_mail, password, public_key, private_key))
             self.cursor.execute("UPDATE Site SET Me=?, PrivateKey=?, ModUser=?, ModDate=CURRENT_TIMESTAMP WHERE SiteID=?;", (self.user, pickle.dumps(self.private_key) if self.private_key is not None else None, self.user, self.site))
             self.cnx.commit()
             return True
@@ -1143,7 +1141,7 @@ class Client(object):
         else:
             return False
         if self.user is not None:
-            self.cursor.execute("UPDATE Person SET PublicKey=?, ModUser=?, ModDate=CURRENT_TIMESTAMP WHERE Site=?, PersonID=?;", (pickle.dumps(self.public_key), self.user, self.site, self.user))
+            self.cursor.execute("UPDATE Person SET PrivateKey=?, PublicKey=?, ModUser=?, ModDate=CURRENT_TIMESTAMP WHERE Site=?, PersonID=?;", (pickle.dumps(self.private_key), pickle.dumps(self.public_key), self.user, self.site, self.user))
             self.cursor.execute("UPDATE Site SET PublicKey=?, PrivateKey=?, ModUser=?, ModDate=CURRENT_TIMESTAMP WHERE SiteID=?;", (self.key, pickle.dumps(self.private_key), elf.site))
             self.cnx.commit()
         return True

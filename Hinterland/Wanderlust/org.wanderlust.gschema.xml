@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.wanderlust" path="/org/wanderlust/">
+      <key type="i" name="main-window-x">
+          <default>20</default>
+          <description>Main Window X</description>
+      </key>
+      <key type="i" name="main-window-y">
+          <default>20</default>
+          <description>Main Window Y</description>
+      </key>
+      <key type="i" name="main-window-width">
+          <default>480</default>
+          <description>Main Window width</description>
+      </key>
+      <key type="i" name="main-window-height">
+          <default>320</default>
+          <description>Main Window height</description>
+      </key>
+  </schema>
+</schemalist>

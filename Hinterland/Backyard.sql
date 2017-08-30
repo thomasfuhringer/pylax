@@ -34,8 +34,10 @@ CREATE TABLE Person (
 	EMail			TEXT,
 	Phone			TEXT,
 	Picture			BLOB,
+	Password		BLOB,
+	PrivateKey		BLOB,
 	PublicKey		BLOB,
-	Handle			TEXT COLLATE NOCASE UNIQUE,
+	Handle			TEXT COLLATE NOCASE,
 	Language    	INTEGER,          -- ISO 3166-1
 	Location		BLOB,
 	ModUser			INTEGER,
