@@ -17,7 +17,7 @@ label.alignHoriz, label.alignVert = pylax.Align.center, pylax.Align.center
 
 ### Example Form
 
-![example form screen shot](Screenshot Test.png)
+![example form screen shot](Screenshot%20Test.png)
 
 ```python
 import pylax
@@ -60,5 +60,5 @@ r = ds.execute()
 
 ### Master - Detail Form
 
-![Item form screen shot](Screenshot Item.png)
+![Item form screen shot](Screenshot%20Item.png)
 
