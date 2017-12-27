@@ -5,7 +5,7 @@ Code examples
 
 ### Hello World
 
-![Hello World screen shot](Screenshot Hello.png)
+![Hello World screen shot](Screenshot%20Hello.png)
 
 ```python
 import pylax

@@ -3,7 +3,7 @@
 # github.com/thomasfuhringer/pylax/hinterland
 # For encrypted communication the library PyNaCl needs to be installed.
 
-import pickle, socket, struct, threading, time, sys, traceback
+import pickle, socket, struct, threading, time, sys, traceback, os
 import hashlib, uuid, base64, sqlite3, importlib.util
 from enum import Enum
 
@@ -15,6 +15,7 @@ if nacl_available:
 
 version_info = (0, 1, 0)
 default_port = 1550
+script_path = os.path.dirname(os.path.realpath(__file__)) + "/"
 
 class Msg:
     Type, Connect, Disconnect, Error, Shutdown, \
@@ -806,7 +807,7 @@ class Server(object):
     """
     backlog = 5
 
-    def __init__(self, host, port=default_port, database="Hinterland.db"):
+    def __init__(self, host, port=default_port, database=script_path+"Hinterland.db"):
         self.sessions = []
         self.socket = socket.socket()
         self.socket.bind((host, port))
@@ -891,7 +892,7 @@ class Server(object):
 
 class Client(object):
 
-    def __init__(self, host, port=default_port, database="Backyard.db", encrypted=False, hide_token=False):
+    def __init__(self, host, port=default_port, database=script_path+"Backyard.db", encrypted=False, hide_token=False):
         self.key = None             # public key of server
         self.private_key = None
         self.public_key = None
