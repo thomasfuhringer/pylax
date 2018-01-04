@@ -145,7 +145,7 @@ PxImage_RenderData(PxImageObject* self, bool bFormat)
 	char* sBuffer;
 
 	if (self->pyData == NULL || self->pyData == Py_None) {
-	gtk_image_set_from_pixbuf(self->gtkImage, g.gdkPixbufPlaceHolder);
+		gtk_image_set_from_pixbuf(self->gtkImage, g.gdkPixbufPlaceHolder);
 		return true;
 	}
 
@@ -182,8 +182,8 @@ PxImage_refresh(PxImageObject* self)
 		if (!PyObject_RichCompareBool(self->pyData, pyData, Py_EQ)) {
 			PxAttachObject(&self->pyData, pyData, true);
 		}
-			if (!PxImage_RenderData(self, true))
-				Py_RETURN_FALSE;
+		if (!PxImage_RenderData(self, true))
+			Py_RETURN_FALSE;
 		gtk_widget_set_sensitive(self->gtk, !(self->bReadOnly || self->pyDynaset->bLocked));
 	}
 	Py_RETURN_TRUE;

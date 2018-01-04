@@ -94,9 +94,9 @@ PxEntry_refresh(PxEntryObject* self)
 	}
 	else {
 		PyObject* pyData = PxWidget_PullData((PxWidgetObject*)self);
-			if (pyData == NULL)
-				Py_RETURN_FALSE;
-//Xx("freshc pyData",pyData);
+		if (pyData == NULL)
+			Py_RETURN_FALSE;
+		//Xx("freshc pyData",pyData);
 		if (!PyObject_RichCompareBool(self->pyData, pyData, Py_EQ)) {
 			PxAttachObject(&self->pyData, pyData, true);
 			if (!PxEntry_RenderData(self, true))

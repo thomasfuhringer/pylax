@@ -63,21 +63,21 @@ PxLabel_SetData(PxLabelObject* self, PyObject* pyData)
 bool
 PxLabel_RenderData(PxLabelObject* self, bool bFormat)
 {
-    bool bSuccess;
+	bool bSuccess;
 	PyObject* pyText = PxFormatData(self->pyData, bFormat ? self->pyFormat : (self->pyFormatEdit ? self->pyFormatEdit : Py_None));
 	if (pyText == NULL) {
 		return false;
 	}
 
 	if (self->pyCaptionClient) {
-		bSuccess=(PyObject_SetAttrString(self->pyCaptionClient, "caption", pyText) == -1) ? false : true;
-        Py_DECREF(pyText);
-        }
+		bSuccess = (PyObject_SetAttrString(self->pyCaptionClient, "caption", pyText) == -1) ? false : true;
+		Py_DECREF(pyText);
+	}
 	else {
-		bSuccess=PxLabel_SetCaption((PxLabelObject*)self, pyText);
-        Py_DECREF(pyText);
-        }
-    return bSuccess;
+		bSuccess = PxLabel_SetCaption((PxLabelObject*)self, pyText);
+		Py_DECREF(pyText);
+	}
+	return bSuccess;
 }
 
 static int

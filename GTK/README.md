@@ -1,5 +1,5 @@
 # Pylax on GTK
-GTK version of Pylax, a database front end using embedded Python as scripting language
+GTK version of Pylax, a database front end for SQLite using embedded Python as scripting language
 
 Code examples
 

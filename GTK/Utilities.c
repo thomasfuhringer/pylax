@@ -132,20 +132,20 @@ PyTupleObject* // new ref
 PyTuple_Duplicate(PyTupleObject* pyTuple)
 // see: static PyObject *tupleslice(PyTupleObject *a, Py_ssize_t ilow, Py_ssize_t ihigh) in: cpython/Objects/tupleobject.c
 {
-    PyTupleObject* pyNewTuple;
-    PyObject** pySrc, **pyDest;
-    PyObject* pyItem;
+	PyTupleObject* pyNewTuple;
+	PyObject** pySrc, **pyDest;
+	PyObject* pyItem;
 	Py_ssize_t nIndex, nLen = PyTuple_Size(pyTuple);
 
-    pyNewTuple = (PyTupleObject*)PyTuple_New(nLen);
-    pySrc = pyTuple->ob_item;
-    pyDest = pyNewTuple->ob_item;
-    for (nIndex = 0; nIndex < nLen; nIndex++) {
-        pyItem = pySrc[nIndex];
-        Py_INCREF(pyItem);
-        pyDest[nIndex] = pyItem;
-    }
-    return pyNewTuple;
+	pyNewTuple = (PyTupleObject*)PyTuple_New(nLen);
+	pySrc = pyTuple->ob_item;
+	pyDest = pyNewTuple->ob_item;
+	for (nIndex = 0; nIndex < nLen; nIndex++) {
+		pyItem = pySrc[nIndex];
+		Py_INCREF(pyItem);
+		pyDest[nIndex] = pyItem;
+	}
+	return pyNewTuple;
 }
 
 void

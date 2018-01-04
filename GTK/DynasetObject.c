@@ -820,11 +820,11 @@ PxDynaset_Write(PxDynasetObject* self)
 			}
 
 			if (self->pyAutoColumn) {
-				pyLastRowID =  PyObject_GetAttrString(pyCursor, "lastrowid");
-			if (pyLastRowID == NULL) {
-				PyErr_Print();
-				return -1;
-			}
+				pyLastRowID = PyObject_GetAttrString(pyCursor, "lastrowid");
+				if (pyLastRowID == NULL) {
+					PyErr_Print();
+					return -1;
+				}
 				if (pyLastRowID == Py_None) {
 					self->iLastRowID = -1;
 					Py_XDECREF(pyLastRowID);
@@ -965,7 +965,7 @@ PxDynaset_CleanUp(PxDynasetObject* self)
 			if (nRow <= self->nRow)
 				self->nRow--;
 			self->nRows--;
-            nLen--;
+			nLen--;
 			nRow--; // the row pointed to has just been deleted, the next one will have to have the same index
 		}
 		// INSERT
