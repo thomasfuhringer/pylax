@@ -25,6 +25,9 @@ PxEntry_init(PxEntryObject* self, PyObject* args, PyObject* kwds)
 
 	self->gtk = gtk_entry_new();
 	g_signal_connect(G_OBJECT(self->gtk), "changed", G_CALLBACK(GtkEntry_ChangedCB), (gpointer)self);
+	gtk_widget_set_events(GTK_WIDGET(self->gtk), GDK_FOCUS_CHANGE_MASK);
+	g_signal_connect(G_OBJECT(self->gtk), "focus-in-event", G_CALLBACK(GtkEntry_FocusInEventCB), (gpointer)self);
+
 	gtk_fixed_put(self->pyParent->gtkFixed, self->gtk, 0, 0);
 	PxWidget_Reposition(self);
 	g_object_set_qdata(G_OBJECT(self->gtk), g.gQuark, (gpointer)self);
@@ -39,9 +42,6 @@ PxEntry_init(PxEntryObject* self, PyObject* args, PyObject* kwds)
 		gtk_widget_hide(self->gtk);
 	else
 		gtk_widget_show(self->gtk);
-
-	gtk_widget_set_events(GTK_WIDGET(self->gtk), GDK_FOCUS_CHANGE_MASK);
-	g_signal_connect(G_OBJECT(self->gtk), "focus-in-event", G_CALLBACK(GtkEntry_FocusInEventCB), (gpointer)self);
 
 	return 0;
 }
@@ -83,6 +83,7 @@ PxEntry_refresh(PxEntryObject* self)
 	if (self->pyDynaset == NULL || !self->bClean)
 		Py_RETURN_TRUE;
 	//g_debug("---- PxEntry_refresh");
+		//Xx("PxEntry_refresh 1",self);
 
 	if (self->pyDynaset->nRow == -1) {
 		if (self->pyData != Py_None) {
@@ -104,6 +105,7 @@ PxEntry_refresh(PxEntryObject* self)
 		}
 		gtk_widget_set_sensitive(self->gtk, !(self->bReadOnly || self->pyDynaset->bLocked));
 	}
+		//Xx("PxEntry_refresh 2",self);
 	Py_RETURN_TRUE;
 }
 
@@ -133,8 +135,6 @@ static gboolean
 GtkEntry_FocusInEventCB(GtkWidget* gtkWidget, GdkEvent* gdkEvent, gpointer gUserData)
 {
 	PxEntryObject* self = (PxEntryObject*)gUserData;
-	//g_debug("GtkEntry_FocusInEventCB %s", PyUnicode_AsUTF8(PyObject_CallMethod(self, "str", NULL)));
-	//g_debug("GtkEntry_FocusInEventCB ");
 
 	if (self->pyWindow->pyFocusWidget == (PxWidgetObject*)self)
 		return FALSE;
@@ -149,7 +149,6 @@ GtkEntry_FocusInEventCB(GtkWidget* gtkWidget, GdkEvent* gdkEvent, gpointer gUser
 
 	if (!PxEntry_RenderData(self, false)) // render unformatted
 		PythonErrorDialog();
-	//g_debug("GtkEntry_FocusInEventCB blew");
 	return FALSE; // to propagate the event further
 }
 
@@ -163,8 +162,10 @@ GtkEntry_ChangedCB(GtkEditable* gtkEditable, gpointer gUserData)
 
 	if (self->bClean) {
 		self->bClean = false;
-		if (self->pyDynaset)
+		if (self->pyDynaset){
 			PxDynaset_Freeze(self->pyDynaset);
+			//PxDynaset_UpdateControlWidgets(self->pyDynaset);
+			}
 	}
 }
 

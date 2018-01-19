@@ -534,7 +534,7 @@ PxDynaset_execute(PxDynasetObject* self, PyObject* args, PyObject* kwds)
 
 	PyObject* pyColumnDescriptions = PyObject_GetAttrString(self->pyCursor, "description");
 	PyObject* pyIterator = PyObject_GetIter(pyColumnDescriptions);
-	PyObject* pyItem, *pyColumnName, *pyColumn, *pyRow, *pyIndex;
+	PyObject* pyItem, *pyColumnName, *pyColumn, *pyIndex;
 	Py_ssize_t nIndex = 0;
 	if (pyIterator == NULL) {
 		return NULL;
@@ -561,6 +561,7 @@ PxDynaset_execute(PxDynasetObject* self, PyObject* args, PyObject* kwds)
 	Py_DECREF(pyIterator);
 
 	// create Dynaset rows and reference to query result tuples
+	PyObject* pyRow = NULL;
 	self->nRows = 0;
 	while (pyItem = PyIter_Next(pyResult)) {
 		//Py_INCREF(pyItem); // ??
@@ -576,10 +577,10 @@ PxDynaset_execute(PxDynasetObject* self, PyObject* args, PyObject* kwds)
 		if (PyList_Append(self->pyRows, pyRow) == -1) {
 			return NULL;
 		}
+        Py_DECREF(pyRow);
 		self->nRows++;
 	}
 	Py_DECREF(pyResult);
-	Py_DECREF(pyRow);
 	Py_DECREF(pyColumnDescriptions);
 	if (self->pyParent)
 		Py_XDECREF(pyParameters);
@@ -588,17 +589,12 @@ PxDynaset_execute(PxDynasetObject* self, PyObject* args, PyObject* kwds)
 		return NULL;
 	}
 
-	//if (!PxDynaset_DataChanged(self, -1, NULL))
-	//	return NULL;
-
 	// notify table widgets
 	if (!PxDynaset_RefreshBoundWidgets(self, false, true, false))
 		return NULL;
 
-	//g_debug("- Execute over\n");
 	return PyLong_FromSsize_t(self->nRows);
 }
-
 
 PyObject* // new ref
 PxDynaset_GetRowDataDict(PxDynasetObject* self, Py_ssize_t nRow, bool bKeysOnly)
@@ -739,7 +735,6 @@ PxDynaset_Write(PxDynasetObject* self)
 					nColumn = PyLong_AsSsize_t(PyStructSequence_GetItem(pyColumn, PXDYNASETCOLUMN_INDEX));
 					pyIsKey = PyStructSequence_GetItem(pyColumn, PXDYNASETCOLUMN_KEY);
 					pyData = PyTuple_GetItem(pyRowData, nColumn);
-					//XX(pyData);
 					if (pyIsKey == Py_True) {
 						sSql = StringAppend2(sSql, PyUnicode_AsUTF8(pyColumnName), "=? AND ");
 						if (PyList_Append(pyParams, pyData) == -1) {
@@ -792,15 +787,11 @@ PxDynaset_Write(PxDynasetObject* self)
 				if (pyIsKey != Py_None && self->pyAutoColumn != pyColumn) {
 					sSql = StringAppend2(sSql, PyUnicode_AsUTF8(pyColumnName), ",");
 					sSql2 = StringAppend(sSql2, "?,");
-					//MessageBoxA(0, sSql, "sSql", 0);
-					//XX(pyData);
 					if (PyList_Append(pyParams, pyData) == -1) {
 						return -1;
 					}
 				}
 				//Py_DECREF(pyData);
-				//ShowInts(L"X", pyData->ob_refcnt, pyRowData->ob_refcnt);
-				//MessageBoxA(0, sSql, "sSql", 0);
 			}
 
 			if (PySequence_Size(pyParams) == 0) {
@@ -905,10 +896,6 @@ PxDynaset_Write(PxDynasetObject* self)
 			if (pyCursor == NULL) {
 				return -1;
 			}
-			pyCursor = PyObject_CallMethod(self->pyConnection, "commit", NULL);
-			if (pyCursor == NULL) {
-				return -1;
-			}
 			iRecordsChanged++;
 
 			Py_DECREF(pyCursor);
@@ -941,6 +928,7 @@ PxDynaset_Write(PxDynasetObject* self)
 }
 
 static bool
+// after sucessful commit remove deleted rows, mark all clean and unfreeze record pointer widgets all through the subtree
 PxDynaset_CleanUp(PxDynasetObject* self)
 {
 	PxDynasetObject* pyChild;
@@ -996,7 +984,7 @@ PxDynaset_CleanUp(PxDynasetObject* self)
 			return false;
 	}
 
-	PxDynaset_RefreshBoundWidgets(self, false, true, true);
+	PxDynaset_RefreshBoundWidgets(self, true, true, true);
 	PxDynaset_UpdateControlWidgets(self);
 	return true;
 }
@@ -1126,17 +1114,16 @@ PxDynaset_Undo(PxDynasetObject* self, Py_ssize_t nRow)
 	PyObject* pyRowDataOld;
 	PyObject* pyRow = PyList_GetItem(self->pyRows, nRow);
 
-	if ((pyRowDataOld = PyStructSequence_GetItem(pyRow, PXDYNASETROW_DATAOLD)) == Py_None) { // old data
-		PyErr_SetString(PyExc_RuntimeError, "Row is still clean.");
-		return false;
+	if ((pyRowDataOld = PyStructSequence_GetItem(pyRow, PXDYNASETROW_DATAOLD)) != Py_None) { // old data
+        PyObject* pyRowData = PyStructSequence_GetItem(pyRow, PXDYNASETROW_DATA);
+        Py_DECREF(pyRowData);
+        PyStructSequence_SetItem(pyRow, PXDYNASETROW_DATA, pyRowDataOld);
+        PyStructSequence_SetItem(pyRow, PXDYNASETROW_DATAOLD, Py_None);
+        if (!PxDynaset_DataChanged(self, nRow, NULL))
+            return false;
 	}
-	PyObject* pyRowData = PyStructSequence_GetItem(pyRow, PXDYNASETROW_DATA);
-	Py_DECREF(pyRowData);
-
-	PyStructSequence_SetItem(pyRow, PXDYNASETROW_DATA, pyRowDataOld);
-	PyStructSequence_SetItem(pyRow, PXDYNASETROW_DATAOLD, Py_None);
-	if (!PxDynaset_DataChanged(self, nRow, NULL))
-		return false;
+	if (! PxDynaset_Thaw(self))
+        return false;
 	return PxDynaset_UnStain(self);
 }
 
@@ -1192,7 +1179,7 @@ PxDynaset_Edit(PxDynasetObject* self)
 		if (pyBoundWidget->bTable) {
 			//
 		}
-		else {
+		else if (pyBoundWidget->pyDataColumn) {
 			bSensitive = !self->bReadOnly && !pyBoundWidget->bReadOnly /*&& !self->bLocked*/;
 			// readonly if widget is bound to auto column unless row is new
 			if (self->pyAutoColumn == PyStructSequence_GET_ITEM(pyBoundWidget->pyDataColumn, PXDYNASETCOLUMN_INDEX) &&
@@ -1310,6 +1297,7 @@ PxDynaset_Thaw(PxDynasetObject* self)
 	}
 
 	PxDynaset_UpdateControlWidgets(self);
+
 	if (self->pyParent)
 		return PxDynaset_Thaw(self->pyParent);
 	else
@@ -1330,8 +1318,18 @@ PxDynaset_Stain(PxDynasetObject* self)
 bool
 PxDynaset_UnStain(PxDynasetObject* self)
 {
+	Py_ssize_t n, nLen;
+	PxDynasetObject* pyChild;
+
 	self->bClean = true;
-	// to do: check children...
+	// check if any child is stained
+	nLen = PySequence_Size(self->pyChildren);
+	for (n = 0; n < nLen; n++) {
+		pyChild = (PxWidgetObject*)PyList_GetItem(self->pyChildren, n);
+		if (!pyChild->bClean)
+			self->bClean = false;
+	}
+
 	PxDynaset_UpdateControlWidgets(self);
 	if (self->pyParent)
 		return PxDynaset_UnStain(self->pyParent);
@@ -1406,7 +1404,7 @@ PxDynaset_DataChanged(PxDynasetObject* self, Py_ssize_t nRow, PyObject* pyColumn
 bool
 PxDynaset_SetRow(PxDynasetObject* self, Py_ssize_t nRow)
 {
-	PxWidgetObject* pyDependent;
+	PxDynasetObject* pyDependent;
 	PyObject* pyResult;
 	Py_ssize_t n, nLen;
 
@@ -1426,8 +1424,8 @@ PxDynaset_SetRow(PxDynasetObject* self, Py_ssize_t nRow)
 	// notify child Dynasets
 	nLen = PySequence_Size(self->pyChildren);
 	for (n = 0; n < nLen; n++) {
-		pyDependent = (PxWidgetObject*)PyList_GetItem(self->pyChildren, n);
-		if (!PxDynaset_ParentSelectionChanged((PxDynasetObject*)pyDependent))
+		pyDependent = (PxDynasetObject*)PyList_GetItem(self->pyChildren, n);
+		if (!PxDynaset_ParentSelectionChanged(pyDependent))
 			return false;
 	}
 	return true;
@@ -1441,18 +1439,25 @@ PxDynaset_RefreshBoundWidgets(PxDynasetObject* self, bool bNonTable, bool bTable
 	Py_ssize_t n, nLen;
 
 	nLen = PySequence_Size(self->pyWidgets);
+		//Xx("self->pyWidgets ",self->pyWidgets);
+	//g_debug("Px nLen %i.", nLen);
 	for (n = 0; n < nLen; n++) {
 		pyDependent = (PxWidgetObject*)PyList_GetItem(self->pyWidgets, n);
-		//XX(pyDependent);
+
 		if ((bNonTable && !pyDependent->bTable) || (bTable && pyDependent->bTable))
 			if ((pyResult = PyObject_CallMethod((PyObject*)pyDependent, "refresh", NULL)) == NULL)
 				return false;
 		if (bRowPointer && pyDependent->bPointer)
 			if ((pyResult = PyObject_CallMethod((PyObject*)pyDependent, "refresh_row_pointer", NULL)) == NULL)
 				return false;
-		if (pyResult)
-			Py_DECREF(pyResult);
+
+		if (pyResult) {
+		    Py_DECREF(pyResult);
+            //Py_DECREF(pyDependent); // for some mysterious reason PyObject_CallMethod increases the reference count
+		}
+	//g_debug("PxDynaset_RefreshBoundWidgets pointer at %i.", n);
 	}
+		//Xx("PxDynaset_RefreshBoundWidgets ",pyDependent);
 	return true;
 }
 
@@ -1472,7 +1477,7 @@ PxDynaset_UpdateControlWidgets(PxDynasetObject* self)
 	}
 
 	if (self->pyEditButton) {
-		bEnable = (!self->bReadOnly && self->bLocked);// && self->nRow != -1);
+		bEnable = (!self->bReadOnly && self->bLocked);
 		gtk_widget_set_sensitive(self->pyEditButton->gtk, bEnable);
 	}
 
@@ -1487,7 +1492,7 @@ PxDynaset_UpdateControlWidgets(PxDynasetObject* self)
 	}
 
 	if (self->pySaveButton) {
-		bEnable = !self->bClean;// || bNew || bDelete;
+		bEnable = !self->bClean;
 		gtk_widget_set_sensitive(self->pySaveButton->gtk, bEnable);
 	}
 

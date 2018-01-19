@@ -11,7 +11,7 @@ PxWindow_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 	if (self != NULL) {
 		self->iMinX = 320;
 		self->iMinY = 240;
-		self->bTable = true;
+		//self->bTable = false;
 		self->bNameInCaption = true;
 		self->pyFocusWidget = NULL;
 		self->pyBeforeCloseCB = NULL;
@@ -44,6 +44,8 @@ PxWindow_init(PxWindowObject* self, PyObject* args, PyObject* kwds)
 	self->gtk = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_application(GTK_WINDOW(self->gtk), g.gtkApp);
 	gtk_window_set_default_size(GTK_WINDOW(self->gtk), self->rc.iWidth, self->rc.iHeight);
+	gtk_window_set_modal(GTK_WINDOW(self->gtk),TRUE);
+	gtk_window_set_transient_for(GTK_WINDOW(self->gtk),g.gtkMainWindow);
 	g_signal_connect(G_OBJECT(self->gtk), "configure-event", G_CALLBACK(GtkWindow_ConfigureEventCB), self);
 	g_signal_connect(G_OBJECT(self->gtk), "delete-event", G_CALLBACK(GtkWindow_DeleteEventCB), self);
 	gtk_window_move(GTK_WINDOW(self->gtk), self->rc.iLeft, self->rc.iTop);
@@ -186,11 +188,8 @@ PxWindow_MoveFocus(PxWindowObject* self, PxWidgetObject* pyDestinationWidget)
 // attempt to move the PxWindow's input focus widget to given one
 // return true if possible, false if not, -1 on error
 {
-	//g_debug("PxWindow_MoveFocus %p", self);
-	//XX(self);
 	if (self->pyFocusWidget == pyDestinationWidget)
 		return true;
-	//g_debug("PxWindow_MoveFocus 4");
 	if (self->pyFocusWidget == NULL) {
 		self->pyFocusWidget = pyDestinationWidget;
 		return true;
@@ -283,6 +282,19 @@ PxWindow_setattro(PxWindowObject* self, PyObject* pyAttributeName, PyObject* pyV
 				return -1;
 			}
 		}
+		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "visible") == 0) {
+			if (PyBool_Check(pyValue)){
+			    if (pyValue == Py_True)
+		            gtk_widget_show(self->gtk);
+	            else
+		            gtk_widget_hide(self->gtk);
+				return 0;
+			}
+			else {
+				PyErr_SetString(PyExc_TypeError, "Parameter must be bool");
+				return -1;
+			}
+		}
 	}
 	return PxWindowType.tp_base->tp_setattro((PyObject*)self, pyAttributeName, pyValue);
 }
@@ -339,7 +351,7 @@ static PyMemberDef PxWindow_members[] = {
 static PyMethodDef PxWindow_methods[] = {
 	{ "set_icon_from_file", (PyCFunction)PxWindow_set_icon_from_file, METH_VARARGS | METH_KEYWORDS, "Set the window icon from filename given." },
 	//{ "set_focus", (PyCFunction)PxWindow_set_focus, METH_VARARGS | METH_KEYWORDS, "Set the focus to given widget." },
-	{ NULL }  /* Sentinel */
+	{ NULL }
 };
 
 PyTypeObject PxWindowType = {

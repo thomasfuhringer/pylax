@@ -11,7 +11,6 @@ but switched to [GTK](GTK) because development went much faster.
 
 ![Item form screen shot](GTK/Screenshot%20Item.png)
 
-It is still reeling with bugs.
 
 SQLite is currently the database back end but the plan is to also connect to PostgreSQL at a later stage.
 

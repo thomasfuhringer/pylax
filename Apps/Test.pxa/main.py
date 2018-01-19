@@ -73,4 +73,5 @@ dsDetail.buttonDelete = pylax.Button(tabPageMain, -110, -40, 20, 20)
 dsDetail.buttonUndo = pylax.Button(tabPageMain, -80, -40, 20, 20)
 dsDetail.buttonSave = pylax.Button(tabPageMain, -50, -40, 20, 20)
 
+
 r = ds.execute({"Name": entrySearch.data})

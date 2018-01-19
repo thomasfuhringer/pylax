@@ -7,6 +7,7 @@ static PyObject*
 PxWidget_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 {
 	PxWidgetObject *self = (PxWidgetObject*)PxWidgetType.tp_alloc(type, 0);
+	//PxWidgetObject* self = (PxWidgetObject*)PxWidgetType.tp_base->tp_new(type, args, kwds);
 	if (self != NULL) {
 		self->gtk = NULL;
 		self->gtkFixed = NULL;
