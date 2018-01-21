@@ -32,7 +32,6 @@ PxWindow_init(PxWindowObject* self, PyObject* args, PyObject* kwds)
 	Py_INCREF(self->pyConnection);
 	self->pyName = gArgs.pyCaption;
 	Py_INCREF(self->pyName);
-	g_debug("main.py running.");
 
 	if (!PxWindow_RestoreState((PxWindowObject*)self))
 		return -1;
@@ -46,15 +45,15 @@ PxWindow_init(PxWindowObject* self, PyObject* args, PyObject* kwds)
 	gtk_window_set_default_size(GTK_WINDOW(self->gtk), self->rc.iWidth, self->rc.iHeight);
 	gtk_window_set_modal(GTK_WINDOW(self->gtk),TRUE);
 	gtk_window_set_transient_for(GTK_WINDOW(self->gtk),g.gtkMainWindow);
+	gtk_window_set_position(GTK_WINDOW(self->gtk),GTK_WIN_POS_CENTER_ON_PARENT);
 	g_signal_connect(G_OBJECT(self->gtk), "configure-event", G_CALLBACK(GtkWindow_ConfigureEventCB), self);
 	g_signal_connect(G_OBJECT(self->gtk), "delete-event", G_CALLBACK(GtkWindow_DeleteEventCB), self);
+	if (self->rc.iLeft && self->rc.iTop)
 	gtk_window_move(GTK_WINDOW(self->gtk), self->rc.iLeft, self->rc.iTop);
 	self->gtkFixed = gtk_fixed_new();
 	gtk_container_add(GTK_CONTAINER(self->gtk), self->gtkFixed);
-	gtk_widget_show_all(self->gtkFixed);
-
-	if (gArgs.pyCaption != NULL)
-		if (!PxWindow_SetCaption(self, gArgs.pyCaption))
+	gtk_widget_show_all(self->gtk);
+	if (!PxWindow_SetCaption(self, Py_None))
 			return -1;
 
 	g_object_set_qdata(self->gtk, g.gQuark, self);
@@ -240,7 +239,15 @@ GtkWindow_DeleteEventCB(GtkWidget* gdkWidget, GdkEvent* gdkEvent, gpointer gUser
 			Py_DECREF(pyResult);
 		}
 	}
+	// To do: clean up
 	return FALSE;
+}
+
+static PyObject*
+PxWindow_close(PxWindowObject* self, PyObject *args)
+{
+	gtk_window_close(self->gtk);
+	Py_RETURN_NONE;
 }
 
 static int
@@ -344,13 +351,13 @@ static PyMemberDef PxWindow_members[] = {
 	{ "minHeight", T_INT, offsetof(PxWindowObject, iMinY), 0, "Window can not be resized smaller" },
 	{ "nameInCaption", T_BOOL, offsetof(PxWindowObject, bNameInCaption), 0, "Show name of the Window in the caption" },
 	//{ "buttonCancel", T_OBJECT, offsetof(PxWindowObject, pyCancelButton), 0, "Close the dialog" },
-	//{ "buttonOK", T_OBJECT, offsetof(PxWindowObject, pyOkButton), 0, "Close the dialog" },
-	{ NULL }  /* Sentinel */
+	{ NULL }
 };
 
 static PyMethodDef PxWindow_methods[] = {
 	{ "set_icon_from_file", (PyCFunction)PxWindow_set_icon_from_file, METH_VARARGS | METH_KEYWORDS, "Set the window icon from filename given." },
 	//{ "set_focus", (PyCFunction)PxWindow_set_focus, METH_VARARGS | METH_KEYWORDS, "Set the focus to given widget." },
+	{ "close", (PyCFunction)PxWindow_close, METH_NOARGS, "Close and destroy." },
 	{ NULL }
 };
 

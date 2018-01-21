@@ -126,8 +126,9 @@ PxEntry_get_input_data(PxEntryObject* self)
 {
 	PyObject* pyData;
 	const gchar* sText = gtk_entry_get_text(self->gtk);
-	if ((pyData = PxParseString(sText, self->pyDataType, NULL)) == NULL)
-		return NULL;
+	if ((pyData = PxParseString(sText, self->pyDataType, NULL)) == NULL){
+		PythonErrorDialog();
+		Py_RETURN_NONE;}
 	return pyData;
 }
 
@@ -164,6 +165,9 @@ GtkEntry_ChangedCB(GtkEditable* gtkEditable, gpointer gUserData)
 		self->bClean = false;
 		if (self->pyDynaset){
 			PxDynaset_Freeze(self->pyDynaset);
+	        if (self->pyDynaset->pySaveButton) {
+		        gtk_widget_set_sensitive(self->pyDynaset->pySaveButton->gtk, TRUE);
+	        }
 			//PxDynaset_UpdateControlWidgets(self->pyDynaset);
 			}
 	}

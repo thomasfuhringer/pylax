@@ -91,6 +91,7 @@ PxDynaset_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 		self->pyWidgets = NULL;
 		self->pyChildren = NULL;
 		self->pyOnParentSelectionChangedCB = NULL;
+		self->pyOnChangedCB = NULL;
 		self->pyBeforeSaveCB = NULL;
 
 		return (PyObject*)self;
@@ -300,7 +301,6 @@ PxDynaset_GetData(PxDynasetObject* self, Py_ssize_t nRow, PyObject* pyColumn)
 		nRow = self->nRow;
 	if (nRow < 0 || nRow > self->nRows) {
 		PyErr_SetString(PyExc_IndexError, "Cannot get data from Dynaset. Row number out of range.");
-		//g_debug("PxDynaset_GetData nRow %d", nRow);
 		return NULL;
 	}
 
@@ -321,7 +321,6 @@ PxDynaset_get_data(PxDynasetObject* self, PyObject *args)
 	}
 	if (nRow < -1 || nRow > self->nRows) {
 		PyErr_SetString(PyExc_IndexError, "Cannot get data from Dynaset. Row number out of range.");
-		//g_debug("PxDynaset_GetData nRow %d", nRow);
 		return NULL;
 	}
 
@@ -368,7 +367,7 @@ static PyObject* // new ref
 PxDynaset_set_data(PxDynasetObject* self, PyObject *args)
 {
 	Py_ssize_t nRow = self->nRow;
-	PyObject* pyColumn, *pyData;
+	PyObject* pyColumn, *pyColumnName, *pyData;
 	if (!PyArg_ParseTuple(args, "OO|n", &pyColumn, &pyData, &nRow)) {
 		return NULL;
 	}
@@ -379,10 +378,14 @@ PxDynaset_set_data(PxDynasetObject* self, PyObject *args)
 	}
 
 	if (PyUnicode_Check(pyColumn)) {
-		pyData = pyColumn;
-		pyColumn = PyDict_GetItem(self->pyColumns, pyData);
+		pyColumnName = pyColumn;
+		pyColumn = PyDict_GetItem(self->pyColumns, pyColumnName);
 		if (!pyColumn)
-			return PyErr_Format(PyExc_AttributeError, "Dynaset has no column named '%s'.", PyUnicode_AsUTF8(pyData));
+			return PyErr_Format(PyExc_AttributeError, "Dynaset has no column named '%s'.", PyUnicode_AsUTF8(pyColumnName));
+	}
+	else if (!PyObject_TypeCheck(pyColumn, &PxDynasetColumnType)) {
+		PyErr_SetString(PyExc_TypeError, "'column' must be a DataColumn.");
+		return NULL;
 	}
 
 	if (!PxDynaset_SetData(self, nRow, pyColumn, pyData))
@@ -431,6 +434,50 @@ PxDynaset_get_row_data(PxDynasetObject* self, PyObject* args)
 		return NULL;
 	}
 	return PxDynaset_GetRowDataDict(self, nRow, false);
+}
+
+static PyObject* // new ref
+PxDynaset_get_column_data_sum(PxDynasetObject* self, PyObject *args)
+{
+	PyObject* pyColumn, *pyColumnName, *pyData, *pyType;
+	if (!PyArg_ParseTuple(args, "O", &pyColumn)) {
+		return NULL;
+	}
+
+	if (PyUnicode_Check(pyColumn)) {
+		pyColumnName = pyColumn;
+		pyColumn = PyDict_GetItem(self->pyColumns, pyColumnName);
+		if (!pyColumn)
+			return PyErr_Format(PyExc_AttributeError, "Dynaset has no column named '%s'.", PyUnicode_AsUTF8(pyColumnName));
+	}
+	else if (!PyObject_TypeCheck(pyColumn, &PxDynasetColumnType)) {
+		PyErr_SetString(PyExc_TypeError, "'column' must be a DataColumn.");
+		return NULL;
+	}
+
+	Py_ssize_t nRow, nLen, nColumn;
+	PyObject* pyRow, *pyRowData, *pyDataItem;
+	long iSum = 0;
+	double fSum = 0;
+
+	nColumn = PyLong_AsSsize_t(PyStructSequence_GetItem(pyColumn, PXDYNASETCOLUMN_INDEX));
+	pyType = PyStructSequence_GET_ITEM(pyColumn, PXDYNASETCOLUMN_TYPE);
+	nLen = PySequence_Size(self->pyRows);
+	for (nRow = 0; nRow < nLen; nRow++) {
+		pyRow = PyList_GetItem(self->pyRows, nRow);
+		pyRowData = PyStructSequence_GetItem(pyRow, PXDYNASETROW_DATA);
+		pyDataItem = PyTuple_GetItem(pyRowData, nColumn);
+		if(PyLong_Check(pyDataItem))
+		    iSum += PyLong_AsLong(pyDataItem);
+		else if(PyLong_Check(pyDataItem))
+		    fSum += PyFloat_AsDouble(pyDataItem);
+	}
+
+	if (pyType == &PyLong_Type)
+	    return PyLong_FromLong(iSum);
+	else if (pyType == &PyFloat_Type)
+	    return PyFloat_FromDouble(fSum);
+    Py_RETURN_NONE;
 }
 
 bool
@@ -592,6 +639,17 @@ PxDynaset_execute(PxDynasetObject* self, PyObject* args, PyObject* kwds)
 	// notify table widgets
 	if (!PxDynaset_RefreshBoundWidgets(self, false, true, false))
 		return NULL;
+
+	if (self->pyOnChangedCB) {
+		PyObject* pyArgs = Py_BuildValue("(OiO)", (PyObject*)self, -1,Py_None);
+		pyResult = PyObject_CallObject(self->pyOnChangedCB, pyArgs);
+		Py_XDECREF(pyArgs);
+		if (pyResult == NULL)
+			return false;
+		else {
+			Py_XDECREF(pyResult);
+		}
+	}
 
 	return PyLong_FromSsize_t(self->nRows);
 }
@@ -845,7 +903,6 @@ PxDynaset_Write(PxDynasetObject* self)
 		}
 		// UPDATE
 		else if (pyRowDataOld != Py_None) {
-			g_debug("UPDATE");
 			sSql = StringAppend(NULL, "UPDATE ");  // allocate on heap
 			sSql = StringAppend2(sSql, PyUnicode_AsUTF8(self->pyTable), " SET ");
 			sSql2 = StringAppend(NULL, " WHERE ");
@@ -876,7 +933,6 @@ PxDynaset_Write(PxDynasetObject* self)
 
 			if ((pyParams = PySequence_Concat(pyParams1, pyParams2)) == NULL)
 				return -1;
-			//XX(pyParams);
 			Py_XDECREF(pyParams1);
 			Py_XDECREF(pyParams2);
 
@@ -888,8 +944,6 @@ PxDynaset_Write(PxDynasetObject* self)
 			memset(sSql + strlen(sSql) - 1, '\0', 1); // cut off final comma
 			memset(sSql2 + strlen(sSql2) - 5, '\0', 1); // cut off final ' AND '
 			sSql = StringAppend2(sSql, sSql2, ";");
-
-			//XX(pyParams);
 
 			pyCursor = PyObject_CallMethod(self->pyConnection, "execute", "(sO)", sSql, PyList_AsTuple(pyParams));
 			PyErr_Print();
@@ -1085,7 +1139,6 @@ PxDynaset_NewRow(PxDynasetObject* self, Py_ssize_t nRow)
 static PyObject*
 PxDynaset_new_row(PxDynasetObject* self, PyObject *args, PyObject *kwds)
 {
-	g_debug("PxDynaset_new_row");
 	static char *kwlist[] = { "row", NULL };
 	Py_ssize_t nRow = self->nRow;
 	//if (!PyArg_ParseTupleAndKeywords(args, kwds, "|n", kwlist, &nRow)) {
@@ -1236,7 +1289,6 @@ PxDynaset_undo(PxDynasetObject* self, PyObject *args)
 static PyObject*
 PxDynaset_delete(PxDynasetObject* self, PyObject *args)
 {
-	g_debug("PxDynaset_del");
 	if (self->nRow == -1) {
 		PyErr_SetString(PyExc_RuntimeError, "No row selected.");
 		return NULL;
@@ -1261,7 +1313,6 @@ PxDynaset_Freeze(PxDynasetObject* self)
 		if (pyWidget->bPointer)
 			gtk_widget_set_sensitive(pyWidget->gtk, false);
 	}
-	//g_debug("PxDynaset_Froze");
 
 	PxDynaset_UpdateControlWidgets(self);
 	if (self->pyParent)
@@ -1398,6 +1449,17 @@ PxDynaset_DataChanged(PxDynasetObject* self, Py_ssize_t nRow, PyObject* pyColumn
 		else
 			Py_DECREF(pyResult);
 	}
+
+	if (self->pyOnChangedCB) {
+		PyObject* pyArgs = Py_BuildValue("(OiO)", (PyObject*)self, nRow,pyColumn);
+		pyResult = PyObject_CallObject(self->pyOnChangedCB, pyArgs);
+		Py_XDECREF(pyArgs);
+		if (pyResult == NULL)
+			return false;
+		else {
+			Py_XDECREF(pyResult);
+		}
+	}
 	return true;
 }
 
@@ -1421,6 +1483,8 @@ PxDynaset_SetRow(PxDynasetObject* self, Py_ssize_t nRow)
 	if (!PxDynaset_RefreshBoundWidgets(self, true, false, true))
 		return false;
 
+	PxDynaset_UpdateControlWidgets(self);
+
 	// notify child Dynasets
 	nLen = PySequence_Size(self->pyChildren);
 	for (n = 0; n < nLen; n++) {
@@ -1439,8 +1503,6 @@ PxDynaset_RefreshBoundWidgets(PxDynasetObject* self, bool bNonTable, bool bTable
 	Py_ssize_t n, nLen;
 
 	nLen = PySequence_Size(self->pyWidgets);
-		//Xx("self->pyWidgets ",self->pyWidgets);
-	//g_debug("Px nLen %i.", nLen);
 	for (n = 0; n < nLen; n++) {
 		pyDependent = (PxWidgetObject*)PyList_GetItem(self->pyWidgets, n);
 
@@ -1455,9 +1517,7 @@ PxDynaset_RefreshBoundWidgets(PxDynasetObject* self, bool bNonTable, bool bTable
 		    Py_DECREF(pyResult);
             //Py_DECREF(pyDependent); // for some mysterious reason PyObject_CallMethod increases the reference count
 		}
-	//g_debug("PxDynaset_RefreshBoundWidgets pointer at %i.", n);
 	}
-		//Xx("PxDynaset_RefreshBoundWidgets ",pyDependent);
 	return true;
 }
 
@@ -1501,11 +1561,16 @@ PxDynaset_UpdateControlWidgets(PxDynasetObject* self)
 		gtk_widget_set_sensitive(self->pyDeleteButton->gtk, bEnable);
 	}
 
+	if (self->pyOkButton) {
+		bEnable = self->nRow != -1;
+		gtk_widget_set_sensitive(self->pyOkButton->gtk, bEnable);
+	}
+/*
 	if (self->pyDialog && gtk_dialog_get_widget_for_response(self->pyDialog->gtk, GTK_RESPONSE_ACCEPT) != NULL) {
 		bEnable = self->nRow != -1;
 		gtk_dialog_set_response_sensitive(self->pyDialog->gtk, GTK_RESPONSE_ACCEPT, bEnable);
 	}
-
+*/
 	return true;
 }
 
@@ -1598,29 +1663,43 @@ PxDynaset_setattro(PxDynasetObject* self, PyObject* pyAttributeName, PyObject *p
 		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "buttonDelete") == 0) {
 			PxAttachObject(&self->pyDeleteButton, pyValue, true);
 			gtk_button_set_image(self->pyDeleteButton->gtk, gtk_image_new_from_stock(GTK_STOCK_DELETE, GTK_ICON_SIZE_SMALL_TOOLBAR));
-			self->pyDeleteButton->pyOnClickCB = PyCFunction_NewEx(&PxDynaset_ControlButtons[4], (PyObject *)self, NULL);
+			self->pyDeleteButton->pyOnClickCB = PyCFunction_NewEx(&PxDynaset_ControlButtons[4], (PyObject*)self, NULL);
 			if (self->pyDeleteButton->pyOnClickCB == NULL) {
 				Py_DECREF(pyValue);
 				return -1;
 			}
 			PxDynaset_UpdateControlWidgets(self);
 			return 0;
-		}/*
+		}
 		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "buttonOK") == 0) {
 			PxAttachObject(&self->pyOkButton, pyValue, true);
 			gtk_button_set_image(self->pyOkButton->gtk, gtk_image_new_from_stock(GTK_STOCK_OK, GTK_ICON_SIZE_SMALL_TOOLBAR));
-			self->pyOkButton->pyOnClickCB = PyCFunction_NewEx(&PxDynaset_ControlButtons[5], (PyObject *)self, NULL);
-			if (self->pyDeleteButton->pyOnClickCB == NULL) {
+		    gtk_widget_set_sensitive(self->pyOkButton->gtk, FALSE);
+			/*self->pyOkButton->pyOnClickCB = PyCFunction_NewEx(&PxDynaset_ControlButtons[5], (PyObject*)self, NULL);
+		    //XX(pyValue);
+			if (self->pyOkButton->pyOnClickCB == NULL) {
 				Py_DECREF(pyValue);
 				return -1;
-			}
+			}*/
 			return 0;
-		}*/
+		}
 		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "on_parent_changed") == 0) {
 			if (PyCallable_Check(pyValue)) {
 				Py_XINCREF(pyValue);
 				Py_XDECREF(self->pyOnParentSelectionChangedCB);
 				self->pyOnParentSelectionChangedCB = pyValue;
+				return 0;
+			}
+			else {
+				PyErr_SetString(PyExc_TypeError, "Assigned object must be callable.");
+				return -1;
+			}
+		}
+		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "on_changed") == 0) {
+			if (PyCallable_Check(pyValue)) {
+				Py_XINCREF(pyValue);
+				Py_XDECREF(self->pyOnChangedCB);
+				self->pyOnChangedCB = pyValue;
 				return 0;
 			}
 			else {
@@ -1718,7 +1797,16 @@ PxDynaset_getattro(PxDynasetObject* self, PyObject* pyAttributeName)
 			PyErr_Clear();
 			if (self->pySaveButton) {
 				Py_INCREF(self->pySaveButton);
-				return (PyObject *)self->pySaveButton;
+				return (PyObject*)self->pySaveButton;
+			}
+			else
+				Py_RETURN_NONE;
+		}
+		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "buttonOK") == 0) {
+			PyErr_Clear();
+			if (self->pyOkButton) {
+				Py_INCREF(self->pyOkButton);
+				return (PyObject*)self->pyOkButton;
 			}
 			else
 				Py_RETURN_NONE;
@@ -1767,6 +1855,7 @@ static PyMethodDef PxDynaset_methods[] = {
 	{ "get_data", (PyCFunction)PxDynaset_get_data, METH_VARARGS, "Returns the data for a row/column combination" },
 	{ "set_data", (PyCFunction)PxDynaset_set_data, METH_VARARGS, "Sets the data for a row/column combination" },
 	{ "get_row_data", (PyCFunction)PxDynaset_get_row_data, METH_VARARGS, "Returns a data row as named tuple." },
+	{ "get_column_data_sum", (PyCFunction)PxDynaset_get_column_data_sum, METH_VARARGS, "Returns the sum of the data for column." },
 	{ "clear", (PyCFunction)PxDynaset_clear, METH_NOARGS, "Empties the data." },
 	{ "save", (PyCFunction)PxDynaset_save, METH_NOARGS, "Save the data." },
 	{ NULL }

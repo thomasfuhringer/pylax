@@ -58,8 +58,9 @@ typedef struct _PxDynasetObject
 	PxButtonObject* pySaveButton;
 	PxButtonObject* pyDeleteButton;
 	PxDialogObject* pyDialog;
-	//PxButtonObject* pyOkButton;
+	PxButtonObject* pyOkButton;
 	PyObject* pyOnParentSelectionChangedCB;
+	PyObject* pyOnChangedCB;
 	PyObject* pyBeforeSaveCB;
 }
 PxDynasetObject;

@@ -448,6 +448,13 @@ PxWidget_getattro(PxWidgetObject* self, PyObject* pyAttributeName)
 			else
 				Py_RETURN_FALSE;
 		}
+		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "dynaset") == 0) {
+			PyErr_Clear();
+			if (self->pyDynaset)
+				return self->pyDynaset;
+			else
+				Py_RETURN_NONE;
+		}
 		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "frame") == 0) {
 			PyErr_Clear();
 			// not yet implemented

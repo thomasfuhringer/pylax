@@ -329,8 +329,6 @@ OpenApp(char* sFileNamePath)
 		//Xx("hinterland client", g.pyHinterlandClientType);
 	}
 
-	//g_debug("main.py done.");
-
 	gchar* sTitle = g_strconcat(sFileName, " - Pylax", NULL);
 	gtk_window_set_title(GTK_WINDOW(g.gtkMainWindow), sTitle);
 	g_free(sTitle);
