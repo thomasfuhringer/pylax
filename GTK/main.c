@@ -205,7 +205,7 @@ GtkAppActivateEventCB(GtkApplication* app, gpointer gUserData)
 	//-------------------------------------
 	//OpenApp("/media/tfu/OTG/Pylax/Apps/Hello.pxa/Hello.px");
 	//OpenApp("/media/tfu/OTG/Pylax/Apps/Test.pxa/Test.px");
-	//OpenApp("/media/tfu/OTG/Pylax/GTK/Test.px");
+	OpenApp("/media/tfu/OTG/Pylax/GTK/Test.px");
 }
 
 static bool
