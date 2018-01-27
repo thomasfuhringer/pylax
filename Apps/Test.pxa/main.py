@@ -24,11 +24,12 @@ ds.add_column("Description", str)
 ds.add_column("Picture", bytes)
 ds.add_column("Price", float)
 
-dsDetail = pylax.Dynaset("ItemSold", "SELECT ItemSold.rowid, Item, Customer, Customer.Name AS CustomerName, Quantity FROM ItemSold JOIN Customer ON ItemSold.Customer=Customer.CustomerID WHERE ItemSold.Item=:ItemID;", parent=ds)
+dsDetail = pylax.Dynaset("ItemSold", "SELECT ItemSold.rowid, Item, Customer, Customer.Name AS CustomerName, Quantity FROM ItemSold JOIN Customer ON ItemSold.Customer=Customer.CustomerID WHERE ItemSold.Item=:ItemID LIMIT 100;", parent=ds)
 dsDetail.autoColumn = dsDetail.add_column("rowid", int, key=True)
 dsDetail.add_column("Item", int, parent = "ItemID")
 dsDetail.add_column("Customer", int)
 dsDetail.add_column("CustomerName", str, key=None) # non database column
+dsDetail.whoCols = True
 dsDetailColumnQuantity = dsDetail.add_column("Quantity", int, format="{:,}")
 
 def dsDetail__on_changed(ds, row, column):
@@ -56,44 +57,85 @@ def buttonSearch__on_click(self):
     if r > 0:
         ds.row = 0
 
-def entryCustomer__on_click_button(self):
+def entryQuanity__validate(widget, data):
+    if not data >= 0:
+        pylax.message("Please enter a positive number!")
+        return False
+    return True
 
-    def selectorSearchButton__on_click(data):
-        if entrySearch.data == None:
-            r = ds.execute(query = "SELECT CustomerID, Name FROM Customer;")
+class Selector():
+    def __init__(self):
+        self.query_precise = "SELECT CustomerID, Name FROM Customer WHERE Name = :Name;"
+        self.query_browse = "SELECT CustomerID, Name FROM Customer WHERE Name LIKE :Name LIMIT 100;"
+        self.ok = False
+        self.dynaset = pylax.Dynaset("LE", self.query_precise)
+        self.dynaset.add_column("CustomerID", int)
+        self.dynaset.add_column("Name", str)
+
+    def validate(self, data):
+        print(self.query_precise)
+        rowcount = self.dynaset.execute({"Name": data}, self.query_precise)
+        print("!!!")
+        if rowcount == 1:
+            return True
         else:
-            r = ds.execute({"Name": entrySearch.data}, "SELECT CustomerID, Name FROM Customer WHERE Name LIKE :Name;")
+            return False
 
-    def selectorOkButton__on_click(data):
-        self.dynaset.set_data("Customer", ds.get_row_data()["CustomerID"])
-        self.dynaset.set_data("CustomerName", ds.get_row_data()["Name"])
-        selector.close()
+    def dialog(self, data):
+        print(self.query_precise)
+        self.window = pylax.Window(None, 0, 0, 320, 220, "Select Customer", self.dynaset)
 
-    ds = pylax.Dynaset("LE", "SELECT CustomerID, Name FROM Customer;")
-    ds.autoColumn = ds.add_column("CustomerID", int, key=True)
-    ds.add_column("Name")
-    selector = pylax.Window(None, 0, 0, 320, 220, "Select Customer", ds)
+        self.entrySearch= pylax.Entry(self.window, 20, 20, -70, 20, "Search Name")
+        self.entrySearch.data = data + "%"
+        buttonSearch = pylax.Button(self.window, -60, 20, 20, 20, "⏎")
+        buttonSearch.on_click = self.buttonSearch__on_click
 
-    entrySearch= pylax.Entry(selector, 20, 20, -70, 20, "Search Name")
-    ds.buttonSearch = pylax.Button(selector, -60, 20, 20, 20, "⏎")
-    ds.buttonSearch.on_click = selectorSearchButton__on_click;
+        table = pylax.Table(self.window, 20, 60, -20, -70, dynaset=self.dynaset)
+        table.add_column("Name", 150, "Name")
+        table.add_column("ID", 30, "CustomerID")
+        self.dynaset.buttonOK = pylax.Button(self.window, -60, -50, 40, 20, "OK")
+        self.dynaset.buttonOK.on_click = self.buttonOK__on_click;
+        print(self.query_browse)
+        self.dynaset.execute({"Name": self.entrySearch.data}, self.query_browse)
+        self.window.wait_for_close()
 
-    table = pylax.Table(selector, 20, 60, -20, -70, dynaset=ds)
-    table.add_column("Name", 150, "Name")
-    table.add_column("ID", 30, "CustomerID")
-    ds.buttonOK = pylax.Button(selector, -60, -50, 40, 20, "OK")
-    ds.buttonOK.on_click = selectorOkButton__on_click;
-    #selector.buttonCancel = pylax.Button(selector, -60, -40, 50, 20, "Cancel")
-    r=ds.execute()
+    def buttonSearch__on_click(self, buttonSearch):
+        text = self.entrySearch.data
+        r = self.dynaset.execute({"Name": text if text is None else "%"}, self.query_browse)
+
+    def buttonOK__on_click(self, buttonOK):
+        self.ok = True
+        self.window.close()
+
+
+def entryCustomer__validate(self, data):
+    selector = Selector()
+    if selector.validate(data):
+        return True
+    else:
+        selector.dialog(data)
+        if selector.ok:
+            self.dynaset.set_data("Customer", selector.dynaset.get_row_data()["CustomerID"])
+            self.dynaset.set_data("CustomerName", selector.dynaset.get_row_data()["Name"])
+            return Warning
+        else:
+            return False
+
+def entryCustomer__on_click_button(self):
+    selector = Selector()
+    selector.dialog("")
+    if selector.ok:
+        self.dynaset.set_data("Customer", selector.dynaset.get_row_data()["CustomerID"])
+        self.dynaset.set_data("CustomerName", selector.dynaset.get_row_data()["Name"])
 
 entrySearch = pylax.Entry(tabPageMain, 70, 20, -420, 20, label = pylax.Label(tabPageMain, 20, 22, 40, 20, "Search"))
 entrySearch.data = "%"
-ds.buttonSearch = pylax.Button(tabPageMain, -410, 20, 20, 20, "⏎")
-ds.buttonSearch.on_click = buttonSearch__on_click
-ds.buttonSearch.defaultEnter = True
+buttonSearch = pylax.Button(tabPageMain, -410, 20, 20, 20, "⏎")
+buttonSearch.on_click = buttonSearch__on_click
+buttonSearch.defaultEnter = True
 
 selectionTable = pylax.Table(tabPageMain, 20, 80, -360, -130, dynaset=ds, label = pylax.Label(tabPageMain, 20, 60, 90, 20, "Select"))
-selectionTable.add_column("Name", 70, "Name")
+selectionTable.add_column("Name", 70, "Name") # title, width, Dynaset column name
 selectionTable.add_column("Description", 100, "Description")
 selectionTable.showRowIndicator = True
 
@@ -114,10 +156,13 @@ detailTable.add_column("Quantity", 100, "Quantity", editable = True)
 
 entryTotalQuanity = pylax.Entry(tabPageMain, -185, -160, 50, 20, dataType=int, label = pylax.Label(tabPageMain, -340, -160, 70, 20, "Total Quantity"))
 entryTotalQuanity.format="{:,}"
+entryTotalQuanity.readOnly = True
 
 entryCustomer = pylax.Entry(tabPageMain, -260, -120, 60, 20, dynaset=dsDetail, column="CustomerName", dataType=str, label = pylax.Label(tabPageMain, -340, -120, 70, 20, "Customer"))
 entryCustomer.on_click_button = entryCustomer__on_click_button
+entryCustomer.validate = entryCustomer__validate
 entryQuanity = pylax.Entry(tabPageMain, -260, -90, 60, 20, dynaset=dsDetail, column="Quantity", dataType=int, label = pylax.Label(tabPageMain, -340, -90, 70, 20, "Quantity"))
+entryQuanity.validate = entryQuanity__validate
 
 dsDetail.buttonEdit = pylax.Button(tabPageMain, -170, -40, 20, 20)
 dsDetail.buttonNew = pylax.Button(tabPageMain, -140, -40, 20, 20)
