@@ -73,16 +73,13 @@ class Selector():
         self.dynaset.add_column("Name", str)
 
     def validate(self, data):
-        print(self.query_precise)
         rowcount = self.dynaset.execute({"Name": data}, self.query_precise)
-        print("!!!")
         if rowcount == 1:
             return True
         else:
             return False
 
     def dialog(self, data):
-        print(self.query_precise)
         self.window = pylax.Window(None, 0, 0, 320, 220, "Select Customer", self.dynaset)
 
         self.entrySearch= pylax.Entry(self.window, 20, 20, -70, 20, "Search Name")
@@ -95,7 +92,6 @@ class Selector():
         table.add_column("ID", 30, "CustomerID")
         self.dynaset.buttonOK = pylax.Button(self.window, -60, -50, 40, 20, "OK")
         self.dynaset.buttonOK.on_click = self.buttonOK__on_click;
-        print(self.query_browse)
         self.dynaset.execute({"Name": self.entrySearch.data}, self.query_browse)
         self.window.wait_for_close()
 
