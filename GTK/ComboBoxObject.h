@@ -11,9 +11,4 @@ PxComboBoxObject;
 
 extern PyTypeObject PxComboBoxType;
 
-//bool PxComboBox_Selected(PxComboBoxObject* self, int iItem);
-//bool PxComboBox_Entering(PxComboBoxObject* self);
-//bool PxComboBox_Changed(PxComboBoxObject* self);
-//bool PxComboBox_Left(PxComboBoxObject* self);
-
 #endif

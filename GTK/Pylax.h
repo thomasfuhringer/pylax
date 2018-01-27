@@ -24,8 +24,6 @@
 #include "Utilities.h"
 #include "WindowObject.h"
 #include "FormObject.h"
-#include "DialogObject.h"
-//#include "SelectorObject.h"
 #include "EntryObject.h"
 #include "ComboBoxObject.h"
 #include "ImageObject.h"

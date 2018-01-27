@@ -4,6 +4,7 @@
 static void GtkEntry_ChangedCB(GtkEditable* gtkEditable, gpointer gUserData);
 static void GtkEntry_IconPressCB(GtkEntry* gtkEntry, GtkEntryIconPosition gtkEntryIconPosition, GdkEvent* gdkEvent, gpointer gUserData);
 static gboolean GtkEntry_FocusInEventCB(GtkWidget* gtkWidget, GdkEvent* gdkEvent, gpointer gUserData);
+//static void GtkEntry_DestroyCB(GtkWidget* gtkWidget, gpointer gUserData);
 
 static PyObject*
 PxEntry_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
@@ -24,6 +25,7 @@ PxEntry_init(PxEntryObject* self, PyObject* args, PyObject* kwds)
 		return -1;
 
 	self->gtk = gtk_entry_new();
+	g_signal_connect(G_OBJECT(self->gtk), "destroy", G_CALLBACK(GtkWidget_DestroyCB), (gpointer)self);
 	g_signal_connect(G_OBJECT(self->gtk), "changed", G_CALLBACK(GtkEntry_ChangedCB), (gpointer)self);
 	gtk_widget_set_events(GTK_WIDGET(self->gtk), GDK_FOCUS_CHANGE_MASK);
 	g_signal_connect(G_OBJECT(self->gtk), "focus-in-event", G_CALLBACK(GtkEntry_FocusInEventCB), (gpointer)self);
@@ -49,7 +51,6 @@ PxEntry_init(PxEntryObject* self, PyObject* args, PyObject* kwds)
 bool
 PxEntry_RenderData(PxEntryObject* self, bool bFormat)
 {
-	//g_debug("PxEntry_RenderData");
 	if (self->pyData == NULL || self->pyData == Py_None) {
 		gtk_entry_set_text(self->gtk, "");
 		return true;
@@ -82,8 +83,6 @@ PxEntry_refresh(PxEntryObject* self)
 {
 	if (self->pyDynaset == NULL || !self->bClean)
 		Py_RETURN_TRUE;
-	//g_debug("---- PxEntry_refresh");
-		//Xx("PxEntry_refresh 1",self);
 
 	if (self->pyDynaset->nRow == -1) {
 		if (self->pyData != Py_None) {
@@ -97,7 +96,6 @@ PxEntry_refresh(PxEntryObject* self)
 		PyObject* pyData = PxWidget_PullData((PxWidgetObject*)self);
 		if (pyData == NULL)
 			Py_RETURN_FALSE;
-		//Xx("freshc pyData",pyData);
 		if (!PyObject_RichCompareBool(self->pyData, pyData, Py_EQ)) {
 			PxAttachObject(&self->pyData, pyData, true);
 			if (!PxEntry_RenderData(self, true))
@@ -105,7 +103,6 @@ PxEntry_refresh(PxEntryObject* self)
 		}
 		gtk_widget_set_sensitive(self->gtk, !(self->bReadOnly || self->pyDynaset->bLocked));
 	}
-		//Xx("PxEntry_refresh 2",self);
 	Py_RETURN_TRUE;
 }
 
@@ -126,9 +123,10 @@ PxEntry_get_input_data(PxEntryObject* self)
 {
 	PyObject* pyData;
 	const gchar* sText = gtk_entry_get_text(self->gtk);
-	if ((pyData = PxParseString(sText, self->pyDataType, NULL)) == NULL){
+	if ((pyData = PxParseString(sText, self->pyDataType, NULL)) == NULL) {
 		PythonErrorDialog();
-		Py_RETURN_NONE;}
+		Py_RETURN_NONE;
+	}
 	return pyData;
 }
 
@@ -159,17 +157,15 @@ GtkEntry_ChangedCB(GtkEditable* gtkEditable, gpointer gUserData)
 	PxEntryObject* self = (PxEntryObject*)gUserData;
 	if (self->pyWindow->pyFocusWidget != self)
 		return;
-	//g_debug("GtkEntry_ChangedCB and has focus");
 
 	if (self->bClean) {
 		self->bClean = false;
-		if (self->pyDynaset){
+		if (self->pyDynaset) {
 			PxDynaset_Freeze(self->pyDynaset);
-	        if (self->pyDynaset->pySaveButton) {
-		        gtk_widget_set_sensitive(self->pyDynaset->pySaveButton->gtk, TRUE);
-	        }
-			//PxDynaset_UpdateControlWidgets(self->pyDynaset);
+			if (self->pyDynaset->pySaveButton) {
+				gtk_widget_set_sensitive(self->pyDynaset->pySaveButton->gtk, TRUE);
 			}
+		}
 	}
 }
 
@@ -201,28 +197,10 @@ ERROR:
 static PyObject*  // new ref, True if possible to move focus away
 PxEntry_render_focus(PxEntryObject* self)
 {
-	//g_debug("*---- PxEntry_render_focus");
 	PyObject* pyData = NULL, *pyResult = NULL;
 
 	if (self->bClean) {
 		Py_RETURN_TRUE;
-	}
-
-	if (self->pyVerifyCB) {
-		PyObject* pyArgs = PyTuple_Pack(1, (PyObject*)self);
-		pyResult = PyObject_CallObject(self->pyVerifyCB, pyArgs);
-		Py_DECREF(pyArgs);
-		if (pyResult == NULL)
-			return NULL;
-		else if (pyResult == Py_False) { // "verify" function of Widget is supposed to return False if data declined.
-			gtk_widget_grab_focus(self->gtk);
-			return pyResult;
-		}
-		else if (pyResult != Py_True) {
-			PyErr_SetString(PyExc_RuntimeError, "'verify' function of Widget has to return a boolean.");
-			return NULL;
-		}
-		Py_XDECREF(pyResult);
 	}
 
 	pyData = PxEntry_get_input_data(self);
@@ -231,11 +209,38 @@ PxEntry_render_focus(PxEntryObject* self)
 	if (PyObject_RichCompareBool(self->pyData, pyData, Py_EQ)) {  // no true changes were made
 		Py_DECREF(pyData);
 		PxDynaset_Thaw(self->pyDynaset);
+		self->bClean = true;
+		Py_RETURN_TRUE;
 	}
-	else if (!PxEntry_SetData(self, pyData))
+
+	if (self->pyValidateCB) {
+		PyObject* pyArgs = PyTuple_Pack(2, (PyObject*)self, pyData);
+		pyResult = PyObject_CallObject(self->pyValidateCB, pyArgs);
+		Py_DECREF(pyArgs);
+		if (pyResult == NULL)
+			return NULL;
+		else if (pyResult == Py_False) { // "validate" function of Widget is supposed to return False if data declined.
+			gtk_widget_grab_focus(self->gtk);
+			return pyResult;
+		}
+		else if (pyResult == PyExc_Warning) { // callback has taken care of populating widget
+	        self->bClean = true;
+		Py_XDECREF(pyResult);
+	        pyResult = PxEntry_refresh(self);
+		if (pyResult == NULL)
+			return NULL;
+		Py_XDECREF(pyResult);
+	        Py_RETURN_TRUE;
+		}
+		else if (pyResult != Py_True) {
+			PyErr_SetString(PyExc_RuntimeError, "'verify' function of Widget has to return a boolean.");
+			return NULL;
+		}
+		Py_XDECREF(pyResult);
+	}
+
+	if (!PxEntry_SetData(self, pyData))
 		return NULL;
-	//if (self->pyParent && PyObject_TypeCheck(self->pyParent, &PxTableColumnType))
-	//	gtk_widget_hide(self->gtk);
 
 	self->bClean = true;
 	Py_RETURN_TRUE;
@@ -336,6 +341,11 @@ PxEntry_getattro(PxEntryObject* self, PyObject* pyAttributeName)
 static void
 PxEntry_dealloc(PxEntryObject* self)
 {
+	if (self->gtk) {
+		g_object_set_qdata(self->gtk, g.gQuark, NULL);
+		gtk_widget_destroy(self->gtk);
+	}
+	Py_XDECREF(self->pyOnClickButtonCB);
 	Py_TYPE(self)->tp_base->tp_dealloc((PyObject *)self);
 }
 

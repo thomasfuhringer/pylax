@@ -22,6 +22,7 @@ PxCanvas_init(PxCanvasObject* self, PyObject* args, PyObject* kwds)
 		return -1;
 
 	self->gtk = gtk_drawing_area_new();
+	g_signal_connect(G_OBJECT(self->gtk), "destroy", G_CALLBACK(GtkWidget_DestroyCB), (gpointer)self);
 	gtk_fixed_put(self->pyParent->gtkFixed, self->gtk, 0, 0);
 	g_signal_connect(G_OBJECT(self->gtk), "draw", G_CALLBACK(DrawCB), self);
 	PxWidget_Reposition(self);
@@ -333,6 +334,10 @@ PxCanvas_getattro(PxCanvasObject* self, PyObject* pyAttributeName)
 static void
 PxCanvas_dealloc(PxCanvasObject* self)
 {
+	if (self->gtk) {
+		g_object_set_qdata(self->gtk, g.gQuark, NULL);
+		gtk_widget_destroy(self->gtk);
+	}
 	Py_TYPE(self)->tp_base->tp_dealloc((PyObject *)self);
 }
 

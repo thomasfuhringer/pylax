@@ -162,14 +162,14 @@ PythonErrorDialog()
 	//PyErr_Print();
 	PyObject *pyType, *pyValue, *pyTraceback;
 	PyErr_Fetch(&pyType, &pyValue, &pyTraceback);
-	if (pyValue){
-	char* sMessage = PyUnicode_AsUTF8(pyValue);
-
-	GtkWidget* gtkDialog = gtk_message_dialog_new(g.gtkMainWindow,
-        GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
-		"Error in Python script:\n\n≫%s≪", sMessage);
-	gtk_dialog_run(GTK_DIALOG(gtkDialog));
-	gtk_widget_destroy(gtkDialog);}
+	if (pyValue) {
+		char* sMessage = PyUnicode_AsUTF8(pyValue);
+		GtkWidget* gtkDialog = gtk_message_dialog_new(g.gtkMainWindow,
+			GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
+			"Error in Python script:\n\n≫%s≪", sMessage);
+		gtk_dialog_run(GTK_DIALOG(gtkDialog));
+		gtk_widget_destroy(gtkDialog);
+	}
 }
 
 bool

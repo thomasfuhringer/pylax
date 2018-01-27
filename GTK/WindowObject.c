@@ -11,8 +11,8 @@ PxWindow_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 	if (self != NULL) {
 		self->iMinX = 320;
 		self->iMinY = 240;
-		//self->bTable = false;
 		self->bNameInCaption = true;
+		self->bBlocking = false;
 		self->pyFocusWidget = NULL;
 		self->pyBeforeCloseCB = NULL;
 		return (PyObject*)self;
@@ -43,18 +43,18 @@ PxWindow_init(PxWindowObject* self, PyObject* args, PyObject* kwds)
 	self->gtk = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_application(GTK_WINDOW(self->gtk), g.gtkApp);
 	gtk_window_set_default_size(GTK_WINDOW(self->gtk), self->rc.iWidth, self->rc.iHeight);
-	gtk_window_set_modal(GTK_WINDOW(self->gtk),TRUE);
-	gtk_window_set_transient_for(GTK_WINDOW(self->gtk),g.gtkMainWindow);
-	gtk_window_set_position(GTK_WINDOW(self->gtk),GTK_WIN_POS_CENTER_ON_PARENT);
+	gtk_window_set_modal(GTK_WINDOW(self->gtk), TRUE);
+	gtk_window_set_transient_for(GTK_WINDOW(self->gtk), g.gtkMainWindow);
+	gtk_window_set_position(GTK_WINDOW(self->gtk), GTK_WIN_POS_CENTER_ON_PARENT);
 	g_signal_connect(G_OBJECT(self->gtk), "configure-event", G_CALLBACK(GtkWindow_ConfigureEventCB), self);
 	g_signal_connect(G_OBJECT(self->gtk), "delete-event", G_CALLBACK(GtkWindow_DeleteEventCB), self);
 	if (self->rc.iLeft && self->rc.iTop)
-	gtk_window_move(GTK_WINDOW(self->gtk), self->rc.iLeft, self->rc.iTop);
+		gtk_window_move(GTK_WINDOW(self->gtk), self->rc.iLeft, self->rc.iTop);
 	self->gtkFixed = gtk_fixed_new();
 	gtk_container_add(GTK_CONTAINER(self->gtk), self->gtkFixed);
 	gtk_widget_show_all(self->gtk);
 	if (!PxWindow_SetCaption(self, Py_None))
-			return -1;
+		return -1;
 
 	g_object_set_qdata(self->gtk, g.gQuark, self);
 	return 0;
@@ -226,21 +226,34 @@ static gboolean
 GtkWindow_DeleteEventCB(GtkWidget* gdkWidget, GdkEvent* gdkEvent, gpointer gUserData)
 {
 	PxWindowObject* self = (PxWindowObject*)gUserData;
+	if (self) {
+		if (self->pyBeforeCloseCB) {
+			PyObject* pyArgs = PyTuple_Pack(1, (PyObject*)self);
+			Py_INCREF(self);
+			PyObject* pyResult = PyObject_CallObject(self->pyBeforeCloseCB, pyArgs);
+			if (pyResult == NULL) {
+				PythonErrorDialog();
+				return TRUE;
+			}
+			else {
+				Py_DECREF(pyResult);
+			}
+		}
+		if (self->bBlocking)
+			gtk_main_quit();
 
-	if (self->pyBeforeCloseCB) {
-		PyObject* pyArgs = PyTuple_Pack(1, (PyObject*)self);
-		Py_INCREF(self);
-		PyObject* pyResult = PyObject_CallObject(self->pyBeforeCloseCB, pyArgs);
-		if (pyResult == NULL) {
-			PythonErrorDialog();
-			return TRUE;
-		}
-		else {
-			Py_DECREF(pyResult);
-		}
+		self->gtk = NULL;
+		Py_DECREF(self);
 	}
-	// To do: clean up
 	return FALSE;
+}
+
+static PyObject*
+PxWindow_wait_for_close(PxWindowObject* self, PyObject *args)
+{
+	self->bBlocking = true;
+	gtk_main();
+	Py_RETURN_NONE;
 }
 
 static PyObject*
@@ -290,15 +303,41 @@ PxWindow_setattro(PxWindowObject* self, PyObject* pyAttributeName, PyObject* pyV
 			}
 		}
 		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "visible") == 0) {
-			if (PyBool_Check(pyValue)){
-			    if (pyValue == Py_True)
-		            gtk_widget_show(self->gtk);
-	            else
-		            gtk_widget_hide(self->gtk);
+			if (PyBool_Check(pyValue)) {
+				if (pyValue == Py_True)
+					gtk_widget_show(self->gtk);
+				else
+					gtk_widget_hide(self->gtk);
 				return 0;
 			}
 			else {
 				PyErr_SetString(PyExc_TypeError, "Parameter must be bool");
+				return -1;
+			}
+		}
+		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "minWidth") == 0) {
+			if (PyLong_Check(pyValue)) {
+				self->iMinX = PyLong_AsLong(pyValue);
+				gint iCurrentWidth, iCurrentHeight;
+				gtk_widget_get_size_request(self->gtk, &iCurrentWidth, &iCurrentHeight);
+				gtk_widget_set_size_request(self->gtk, self->iMinX, iCurrentHeight);
+				return 0;
+			}
+			else {
+				PyErr_SetString(PyExc_TypeError, "Value must be an integer");
+				return -1;
+			}
+		}
+		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "minHeight") == 0) {
+			if (PyLong_Check(pyValue)) {
+				self->iMinY = PyLong_AsLong(pyValue);
+				gint iCurrentWidth, iCurrentHeight;
+				gtk_widget_get_size_request(self->gtk, &iCurrentWidth, &iCurrentHeight);
+				gtk_widget_set_size_request(self->gtk, iCurrentWidth, self->iMinY);
+				return 0;
+			}
+			else {
+				PyErr_SetString(PyExc_TypeError, "Value must be an integer");
 				return -1;
 			}
 		}
@@ -339,16 +378,21 @@ PxWindow_getattro(PxWindowObject* self, PyObject* pyAttributeName)
 static void
 PxWindow_dealloc(PxWindowObject* self)
 {
+	if (self->gtk) {
+		g_object_set_qdata(self->gtk, g.gQuark, NULL);
+		gtk_window_close(self->gtk);
+	}
 	Py_XDECREF(self->pyConnection);
 	Py_XDECREF(self->pyName);
 	Py_XDECREF(self->pyBeforeCloseCB);
+	Py_XDECREF(self->pyFocusWidget);
 	Py_TYPE(self)->tp_base->tp_dealloc((PxWidgetObject *)self);
 }
 
 static PyMemberDef PxWindow_members[] = {
 	{ "cnx", T_OBJECT, offsetof(PxWindowObject, pyConnection), READONLY, "Database connection" },
-	{ "minWidth", T_INT, offsetof(PxWindowObject, iMinX), 0, "Window can not be resized smaller" },
-	{ "minHeight", T_INT, offsetof(PxWindowObject, iMinY), 0, "Window can not be resized smaller" },
+	//{ "minWidth", T_INT, offsetof(PxWindowObject, iMinX), 0, "Window can not be resized smaller" },
+	//{ "minHeight", T_INT, offsetof(PxWindowObject, iMinY), 0, "Window can not be resized smaller" },
 	{ "nameInCaption", T_BOOL, offsetof(PxWindowObject, bNameInCaption), 0, "Show name of the Window in the caption" },
 	//{ "buttonCancel", T_OBJECT, offsetof(PxWindowObject, pyCancelButton), 0, "Close the dialog" },
 	{ NULL }
@@ -357,7 +401,8 @@ static PyMemberDef PxWindow_members[] = {
 static PyMethodDef PxWindow_methods[] = {
 	{ "set_icon_from_file", (PyCFunction)PxWindow_set_icon_from_file, METH_VARARGS | METH_KEYWORDS, "Set the window icon from filename given." },
 	//{ "set_focus", (PyCFunction)PxWindow_set_focus, METH_VARARGS | METH_KEYWORDS, "Set the focus to given widget." },
-	{ "close", (PyCFunction)PxWindow_close, METH_NOARGS, "Close and destroy." },
+	{ "wait_for_close", (PyCFunction)PxWindow_wait_for_close, METH_NOARGS, "Show as dialog (blocking until closed)." },
+	{ "close", (PyCFunction)PxWindow_close, METH_NOARGS, "Close and destroy, unblock if necessary." },
 	{ NULL }
 };
 

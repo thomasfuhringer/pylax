@@ -29,6 +29,7 @@ PxLabel_init(PxLabelObject* self, PyObject* args, PyObject* kwds)
 		sCaption = ""; //"<Label>";
 
 	self->gtk = gtk_label_new(sCaption);
+	g_signal_connect(G_OBJECT(self->gtk), "destroy", G_CALLBACK(GtkWidget_DestroyCB), (gpointer)self);
 	gtk_label_set_xalign(self->gtk, 0);
 	gtk_fixed_put(self->pyParent->gtkFixed, self->gtk, 0, 0);
 	PxWidget_Reposition(self);
@@ -202,6 +203,11 @@ PxLabel_refresh(PxLabelObject* self)
 static void
 PxLabel_dealloc(PxLabelObject* self)
 {
+	if (self->gtk) {
+		g_object_set_qdata(self->gtk, g.gQuark, NULL);
+		gtk_widget_destroy(self->gtk);
+	}
+	Py_XDECREF(self->pyCaptionClient);
 	Py_XDECREF(self->pyAssociatedWidget);
 	Py_TYPE(self)->tp_base->tp_dealloc((PyObject *)self);
 }

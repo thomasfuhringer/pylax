@@ -29,7 +29,14 @@ PxComboBox_init(PxComboBoxObject *self, PyObject *args, PyObject *kwds)
 
 	g_debug("PxComboBox_init %d", self->bClean);
 	self->gtk = gtk_combo_box_text_new();
+	g_signal_connect(G_OBJECT(self->gtk), "destroy", G_CALLBACK(GtkWidget_DestroyCB), (gpointer)self);
+	gtk_widget_set_events(GTK_WIDGET(self->gtk), GDK_FOCUS_CHANGE_MASK);
+	g_signal_connect(G_OBJECT(self->gtk), "focus-in-event", G_CALLBACK(GtkComboBox_FocusInEventCB), (gpointer)self);
+	g_signal_connect(G_OBJECT(self->gtk), "changed", G_CALLBACK(GtkComboBox_ChangedCB), self);
+
 	gtk_fixed_put(self->pyParent->gtkFixed, self->gtk, 0, 0);
+	PxWidget_Reposition(self);
+	g_object_set_qdata(self->gtk, g.gQuark, self);
 
 	if (self->pyDynaset)
 		gtk_widget_set_sensitive(self->gtk, false);
@@ -42,10 +49,6 @@ PxComboBox_init(PxComboBoxObject *self, PyObject *args, PyObject *kwds)
 		return -1;
 	}
 
-	gtk_widget_set_events(GTK_WIDGET(self->gtk), GDK_FOCUS_CHANGE_MASK);
-	g_signal_connect(G_OBJECT(self->gtk), "focus-in-event", G_CALLBACK(GtkComboBox_FocusInEventCB), (gpointer)self);
-	g_signal_connect(G_OBJECT(self->gtk), "changed", G_CALLBACK(GtkComboBox_ChangedCB), self);
-	g_object_set_qdata(self->gtk, g.gQuark, self);
 	return 0;
 }
 
@@ -103,6 +106,7 @@ GtkComboBox_ChangedCB(GtkWidget* gtkWidget, GdkEvent* gdkEvent, gpointer pUserDa
 {
 	PyObject* pyItem, *pyData;
 	PxComboBoxObject* self = (PxComboBoxObject*)pUserData;
+
 	gint iItem = gtk_combo_box_get_active(gtkWidget);
 	if (iItem == -1)
 		pyData = Py_None;
@@ -115,6 +119,16 @@ GtkComboBox_ChangedCB(GtkWidget* gtkWidget, GdkEvent* gdkEvent, gpointer pUserDa
 		pyData = PyTuple_GET_ITEM(pyItem, 1);
 	}
 	PxAttachObject(&self->pyData, pyData, true);
+
+	if (self->bClean) {
+		self->bClean = false;
+		if (self->pyDynaset) {
+			PxDynaset_Freeze(self->pyDynaset);
+			if (self->pyDynaset->pySaveButton) {
+				gtk_widget_set_sensitive(self->pyDynaset->pySaveButton->gtk, TRUE);
+			}
+		}
+	}
 }
 
 bool
@@ -202,6 +216,8 @@ PxComboBox_refresh(PxComboBoxObject* self)
 	}
 	else {
 		PyObject* pyData = PxWidget_PullData((PxWidgetObject*)self);
+		if (pyData == NULL)
+			Py_RETURN_FALSE;
 		if (!PyObject_RichCompareBool(self->pyData, pyData, Py_EQ)) {
 			PxAttachObject(&self->pyData, pyData, true);
 			if (!PxComboBox_RenderData(self, true))
@@ -247,6 +263,11 @@ PxComboBox_getattro(PxComboBoxObject* self, PyObject* pyAttributeName)
 static void
 PxComboBox_dealloc(PxComboBoxObject* self)
 {
+	if (self->gtk) {
+		g_object_set_qdata(self->gtk, g.gQuark, NULL);
+		gtk_widget_destroy(self->gtk);
+	}
+	Py_XDECREF(self->pyItems);
 	Py_TYPE(self)->tp_base->tp_dealloc((PyObject *)self);
 }
 

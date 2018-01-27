@@ -30,6 +30,7 @@ PxButton_init(PxButtonObject* self, PyObject* args, PyObject* kwds)
 	gtk_widget_show(self->gtk);
 	g_object_set_qdata(G_OBJECT(self->gtk), g.gQuark, self);
 	g_signal_connect(G_OBJECT(self->gtk), "clicked", G_CALLBACK(GtkButton_ClickedCB), self);
+	g_signal_connect(G_OBJECT(self->gtk), "destroy", G_CALLBACK(GtkWidget_DestroyCB), (gpointer)self);
 
 	return 0;
 }
@@ -38,7 +39,7 @@ static gboolean
 GtkButton_ClickedCB(GtkWidget* gtkWidget, GdkEvent* gdkEvent, gpointer pUserData)
 {
 	PxButtonObject* pyButton = g_object_get_qdata(gtkWidget, g.gQuark);
-	if (!PxButton_Clicked(pyButton))//(PxButtonObject*)pUserData))
+	if (!PxButton_Clicked(pyButton))
 		PythonErrorDialog();
 	return true;
 }
@@ -46,8 +47,6 @@ GtkButton_ClickedCB(GtkWidget* gtkWidget, GdkEvent* gdkEvent, gpointer pUserData
 bool
 PxButton_Clicked(PxButtonObject* self)
 {
-	//XX(self);
-	//XX(self->pyWindow);
 	int iR = PxWindow_MoveFocus(self->pyWindow, (PxWidgetObject*)NULL);
 	if (iR == -1)
 		return false;
@@ -68,6 +67,11 @@ PxButton_Clicked(PxButtonObject* self)
 static void
 PxButton_dealloc(PxButtonObject* self)
 {
+	if (self->gtk) {
+		g_object_set_qdata(self->gtk, g.gQuark, NULL);
+		gtk_widget_destroy(self->gtk);
+	}
+	Py_XDECREF(self->pyOnClickCB);
 	Py_TYPE(self)->tp_base->tp_dealloc((PyObject*)self);
 }
 

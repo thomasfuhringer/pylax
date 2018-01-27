@@ -27,7 +27,9 @@ PxWidget_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 		self->pyLabel = NULL;
 		self->pyAlignHorizontal = NULL;
 		self->pyAlignVertical = NULL;
-		self->pyVerifyCB = NULL;
+		self->pyValidateCB = NULL;
+		self->pyUserData = Py_None;
+		Py_INCREF(Py_None);
 		return (PyObject*)self;
 	}
 	else
@@ -205,11 +207,11 @@ PxWidget_CalculateRect(PxWidgetObject* self, Rect* rc)
 	rc->iHeight = rc->iHeight < 0 ? 100 : rc->iHeight;
 
 	if (rc->iWidth > iWidth)
-		g_debug("rc->iWidth ,iWidth %d %d", rc->iWidth, iWidth);
+		g_warning("Widget rc->iWidth ,iWidth %d %d", rc->iWidth, iWidth);
 	if (rc->iHeight > iHeight)
-		g_debug("rc->iHeight <= iHeight %d %d", rc->iHeight, iHeight);
-	g_assert(rc->iWidth <= iWidth);
-	g_assert(rc->iHeight <= iHeight);
+		g_warning("Widget rc->iHeight <= iHeight %d %d", rc->iHeight, iHeight);
+	//g_assert(rc->iWidth <= iWidth);
+	//g_assert(rc->iHeight <= iHeight);
 	return true;
 }
 
@@ -258,7 +260,7 @@ PxWidget_RepositionChildren(PxWidgetObject* self)
 			}
 	return true;
 }
-
+/*
 static bool
 PxWidget_ReleaseChildren(PxWidgetObject* self)
 {
@@ -276,16 +278,29 @@ PxWidget_ReleaseChildren(PxWidgetObject* self)
 	}
 	return true;
 }
+*/
+void
+GtkWidget_DestroyCB(GtkWidget* gtkWidget, gpointer gUserData)
+{
+	PxWidgetObject* self = (PxWidgetObject*)gUserData;
+
+	if (self) {
+		if (self->gtkFixed)
+			gtk_widget_destroy(self->gtkFixed);
+
+		self->gtk = NULL;
+		Py_DECREF(self);
+		return;
+	}
+}
 
 static void
 PxWidget_dealloc(PxWidgetObject* self)
 {
-	if (self->gtk)
+	if (self->gtk) {
+		g_object_set_qdata(self->gtk, g.gQuark, NULL);
 		gtk_widget_destroy(self->gtk);
-
-	if (self->gtkFixed)
-		gtk_widget_destroy(self->gtkFixed);
-
+	}
 	Py_XDECREF(self->pyData);
 	Py_XDECREF(self->pyDataType);
 	Py_XDECREF(self->pyFormat);
@@ -295,11 +310,12 @@ PxWidget_dealloc(PxWidgetObject* self)
 	Py_XDECREF(self->pyLabel);
 	Py_XDECREF(self->pyDynaset);
 	Py_XDECREF(self->pyDataColumn);
+	Py_XDECREF(self->pyValidateCB);
+	Py_XDECREF(self->pyUserData);
 
 	Py_TYPE(self)->tp_free((PyObject*)self);
-
-	if (!PxWidget_ReleaseChildren(self))
-		return;
+	//if (!PxWidget_ReleaseChildren(self))
+	//	return;
 }
 
 static PyObject*
@@ -397,15 +413,20 @@ PxWidget_setattro(PxWidgetObject* self, PyObject* pyAttributeName, PyObject *pyV
 			gtk_widget_set_visible(self->gtk, PyObject_IsTrue(pyValue));
 			return  0;
 		}
+		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "readOnly") == 0) {
+			self->bReadOnly = PyObject_IsTrue(pyValue);
+			gtk_widget_set_sensitive(self->gtk, !self->bReadOnly);
+			return  0;
+		}
 		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "frame") == 0) {
 			g_debug("Widget frame not implemented");
 			return  0;
 		}
-		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "verify") == 0) {
+		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "validate") == 0) {
 			if (PyCallable_Check(pyValue)) {
 				Py_XINCREF(pyValue);
-				Py_XDECREF(self->pyVerifyCB);
-				self->pyVerifyCB = pyValue;
+				Py_XDECREF(self->pyValidateCB);
+				self->pyValidateCB = pyValue;
 				return 0;
 			}
 			else {
@@ -496,7 +517,8 @@ static PyMemberDef PxWidget_members[] = {
 	{ "parent", T_OBJECT, offsetof(PxWidgetObject, pyParent), READONLY, "Parent widget" },
 	{ "window", T_OBJECT, offsetof(PxWidgetObject, pyWindow), READONLY, "Parent window" },
 	{ "clean", T_BOOL, offsetof(PxWidgetObject, bClean), READONLY, "False if widget has been edited." },
-	{ "readOnly", T_BOOL, offsetof(PxWidgetObject, bReadOnly), 0, "Data can not be edited." },
+	{ "userData", T_OBJECT, offsetof(PxWidgetObject, pyUserData), 0, "Payload data" },
+	//{ "readOnly", T_BOOL, offsetof(PxWidgetObject, bReadOnly), 0, "Data can not be edited." },
 	{ "alignHoriz", T_OBJECT, offsetof(PxWidgetObject, pyAlignHorizontal), READONLY, "Horizontal alignment" },
 	{ "alignVert", T_OBJECT, offsetof(PxWidgetObject, pyAlignVertical), READONLY, "Vertical alignment" },
 	{ NULL }

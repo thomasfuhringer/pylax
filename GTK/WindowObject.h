@@ -8,6 +8,7 @@
         int iMinY; \
         PyObject* pyName; \
         bool bNameInCaption; \
+        bool bBlocking; \
         GtkWidget gtkLastFocus; \
         PxWidgetObject* pyFocusWidget; \
 		PyObject* pyBeforeCloseCB;

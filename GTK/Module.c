@@ -55,11 +55,7 @@ PyInit_pylax(void)
 	PxFormType.tp_base = &PxWindowType;
 	if (PyType_Ready(&PxFormType) < 0)
 		return NULL;
-
-	PxDialogType.tp_base = &PxWindowType;
-	if (PyType_Ready(&PxDialogType) < 0)
-		return NULL;
-
+        
 	PxLabelType.tp_base = &PxWidgetType;
 	if (PyType_Ready(&PxLabelType) < 0)
 		return NULL;
@@ -120,7 +116,6 @@ PyInit_pylax(void)
 	Py_INCREF(&PxWidgetType);
 	Py_INCREF(&PxWindowType);
 	Py_INCREF(&PxFormType);
-	Py_INCREF(&PxDialogType);
 	Py_INCREF(&PxLabelType);
 	Py_INCREF(&PxButtonType);
 	Py_INCREF(&PxEntryType);
@@ -140,7 +135,6 @@ PyInit_pylax(void)
 	PyModule_AddObject(pyModule, "Widget", (PyObject *)&PxWidgetType);
 	PyModule_AddObject(pyModule, "Window", (PyObject *)&PxWindowType);
 	PyModule_AddObject(pyModule, "Form", (PyObject *)&PxFormType);
-	PyModule_AddObject(pyModule, "Dialog", (PyObject *)&PxDialogType);
 	PyModule_AddObject(pyModule, "Label", (PyObject *)&PxLabelType);
 	PyModule_AddObject(pyModule, "Button", (PyObject *)&PxButtonType);
 	PyModule_AddObject(pyModule, "Entry", (PyObject *)&PxEntryType);

@@ -28,14 +28,13 @@ PxTable_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 static int
 PxTable_init(PxTableObject* self, PyObject* args, PyObject* kwds)
 {
-
 	if (PxTableType.tp_base->tp_init((PyObject *)self, args, kwds) < 0)
 		return -1;
 
 	self->gtkListStore = gtk_list_store_new(1, G_TYPE_INT);
 
-
 	self->gtk = gtk_scrolled_window_new(NULL, NULL);
+	g_signal_connect(G_OBJECT(self->gtk), "destroy", G_CALLBACK(GtkWidget_DestroyCB), (gpointer)self);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(self->gtk), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 
 	self->gtkTreeView = gtk_tree_view_new_with_model(GTK_TREE_MODEL(self->gtkListStore));
@@ -182,7 +181,6 @@ PxTable_add_column(PxTableObject* self, PyObject* args, PyObject* kwds)
 static PyObject *
 PxTable_refresh(PxTableObject* self)
 {
-	//g_debug("PxTable_refresh pointer at %i.", self->pyDynaset->nRow);
 	gint iRow;
 	GtkTreeIter gtkTreeIter;
 	GtkTreePath* gtkTreePath;
@@ -192,15 +190,15 @@ PxTable_refresh(PxTableObject* self)
 	g_signal_handler_block(G_OBJECT(self->gtkTreeSelection), self->gtkTreeSelectionChangedHandlerID);
 	gtk_list_store_clear(self->gtkListStore);
 
-    if (self->pyDynaset->nRows >0) {
-	for (iRow = 0; iRow < self->pyDynaset->nRows; iRow++) {
-		gtk_list_store_append(self->gtkListStore, &gtkTreeIter);
-		gtk_list_store_set(self->gtkListStore, &gtkTreeIter, 0, iRow, -1);
-	}
+	if (self->pyDynaset->nRows > 0) {
+		for (iRow = 0; iRow < self->pyDynaset->nRows; iRow++) {
+			gtk_list_store_append(self->gtkListStore, &gtkTreeIter);
+			gtk_list_store_set(self->gtkListStore, &gtkTreeIter, 0, iRow, -1);
+		}
 
-	gtkTreePath = gtk_tree_path_new_from_indices(self->pyDynaset->nRow, -1);
-	gtk_tree_selection_select_path(self->gtkTreeSelection, gtkTreePath);
-	gtk_tree_path_free(gtkTreePath);
+		gtkTreePath = gtk_tree_path_new_from_indices(self->pyDynaset->nRow, -1);
+		gtk_tree_selection_select_path(self->gtkTreeSelection, gtkTreePath);
+		gtk_tree_path_free(gtkTreePath);
 	}
 	g_signal_handler_unblock(G_OBJECT(self->gtkTreeSelection), self->gtkTreeSelectionChangedHandlerID);
 
@@ -227,7 +225,6 @@ PxTable_refresh_cell(PxTableObject* self, PyObject* args)
 	gtk_list_store_set(self->gtkListStore, &gtkTreeIter, 0, nRow, -1);  // set it to the same value just to trigger an update of the tree view
 	//g_object_unref(gtkTreePath);
 
-	//g_debug("PxTable_refresh_cell x");
 	Py_RETURN_TRUE;
 }
 
@@ -238,12 +235,10 @@ PxTable_refresh_row_pointer(PxTableObject* self, PyObject* args)
 	GtkTreeIter   gtkTreeIter;
 	gint iRow;
 	GtkTreePath* gtkTreePath;
-	//g_debug("PxTable_refresh_row_pointer");
 
 	if (gtk_tree_selection_get_selected(self->gtkTreeSelection, &gtkTreeModel, &gtkTreeIter))
 	{
 		gtk_tree_model_get(gtkTreeModel, &gtkTreeIter, 0, &iRow, -1);
-		//g_debug("PxTable_refresh_row_pointer %d -> %i", iRow, self->pyDynaset->nRow);
 	}
 	else
 	{
@@ -260,7 +255,6 @@ PxTable_refresh_row_pointer(PxTableObject* self, PyObject* args)
 	gtkTreePath = gtk_tree_path_new_from_indices(self->pyDynaset->nRow, -1);
 	gtk_tree_selection_select_path(self->gtkTreeSelection, gtkTreePath);
 	gtk_tree_path_free(gtkTreePath);
-	//g_debug("PxTable_refresh_row_pointer done");
 	Py_RETURN_NONE;
 }
 
@@ -302,6 +296,10 @@ PxTable_setattro(PxTableObject* self, PyObject* pyAttributeName, PyObject* pyVal
 static void
 PxTable_dealloc(PxTableObject* self)
 {
+	if (self->gtk) {
+		g_object_set_qdata(self->gtk, g.gQuark, NULL);
+		gtk_widget_destroy(self->gtk);
+	}
 	Py_XDECREF(self->pyColumns);
 	Py_TYPE(self)->tp_base->tp_dealloc((PxWidgetObject *)self);
 }
@@ -426,7 +424,6 @@ GtkTreeSelection_ChangedCB(GtkTreeSelection* gtkTreeSelection, gpointer gUserDat
 
 	if (gtk_tree_selection_get_selected(gtkTreeSelection, &gtkTreeModel, &gtkTreeIter))
 		gtk_tree_model_get(gtkTreeModel, &gtkTreeIter, 0, &iRow, -1);
-		//Xx("->pyDynaset ",((PxTableObject*)gUserData)->pyDynaset);
 	if (!PxDynaset_SetRow(((PxTableObject*)gUserData)->pyDynaset, (Py_ssize_t)iRow))
 		PythonErrorDialog();
 }
@@ -540,6 +537,10 @@ PxTableColumn_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 static void
 PxTableColumn_dealloc(PxTableColumnObject* self)
 {
+	Py_XDECREF(self->pyTable);
+	Py_XDECREF(self->pyDynasetColumn);
+	Py_XDECREF(self->pyType);
+	Py_XDECREF(self->pyFormat);
 	Py_TYPE(self)->tp_free((PyObject*)self);
 }
 

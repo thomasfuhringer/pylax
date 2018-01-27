@@ -61,7 +61,7 @@ PxDynaset_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 		self->pyParent = NULL;
 		self->pyConnection = NULL;
 		self->pyTable = NULL;
-		self->bHasWhoCols = true;
+		self->bHasWhoCols = false;
 		self->pyQuery = NULL;
 		self->pyCursor = NULL;
 		self->sInsertSQL = NULL;
@@ -87,12 +87,11 @@ PxDynaset_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 		self->pyUndoButton = NULL;
 		self->pySaveButton = NULL;
 		self->pyDeleteButton = NULL;
-		self->pyDialog = NULL;
 		self->pyWidgets = NULL;
 		self->pyChildren = NULL;
 		self->pyOnParentSelectionChangedCB = NULL;
 		self->pyOnChangedCB = NULL;
-		self->pyBeforeSaveCB = NULL;
+		self->pyValidateCB = NULL;
 
 		return (PyObject*)self;
 	}
@@ -467,17 +466,17 @@ PxDynaset_get_column_data_sum(PxDynasetObject* self, PyObject *args)
 		pyRow = PyList_GetItem(self->pyRows, nRow);
 		pyRowData = PyStructSequence_GetItem(pyRow, PXDYNASETROW_DATA);
 		pyDataItem = PyTuple_GetItem(pyRowData, nColumn);
-		if(PyLong_Check(pyDataItem))
-		    iSum += PyLong_AsLong(pyDataItem);
-		else if(PyLong_Check(pyDataItem))
-		    fSum += PyFloat_AsDouble(pyDataItem);
+		if (PyLong_Check(pyDataItem))
+			iSum += PyLong_AsLong(pyDataItem);
+		else if (PyLong_Check(pyDataItem))
+			fSum += PyFloat_AsDouble(pyDataItem);
 	}
 
 	if (pyType == &PyLong_Type)
-	    return PyLong_FromLong(iSum);
+		return PyLong_FromLong(iSum);
 	else if (pyType == &PyFloat_Type)
-	    return PyFloat_FromDouble(fSum);
-    Py_RETURN_NONE;
+		return PyFloat_FromDouble(fSum);
+	Py_RETURN_NONE;
 }
 
 bool
@@ -513,6 +512,10 @@ PxDynaset_clear(PxDynasetObject* self, PyObject* args)
 PyObject* // new ref
 PxDynaset_execute(PxDynasetObject* self, PyObject* args, PyObject* kwds)
 {
+	if (self->bFrozen) {
+		PyErr_SetString(PyExc_RuntimeError, "Dynaset is frozen.");
+		return NULL;
+	}
 	static char *kwlist[] = { "parameters", "query", NULL };
 	PyObject* pyParameters = NULL, *pyQuery = NULL, *pyResult = NULL;
 	if (args && !PyArg_ParseTupleAndKeywords(args, kwds, "|OO", kwlist, &pyParameters, &pyQuery)) {
@@ -552,12 +555,13 @@ PxDynaset_execute(PxDynasetObject* self, PyObject* args, PyObject* kwds)
 	}
 
 	if (pyQuery) {
-		if (PyUnicode_Check(pyQuery))
-			PxAttachObject(&self->pyQuery, pyQuery, true);
-		else {
-			PyErr_SetString(PyExc_TypeError, "Parameter 2 ('query') must be a string.");
-			return NULL;
-		}
+		if (PyUnicode_Check(pyQuery)){
+			if (self->pyQuery != pyQuery)
+				PxAttachObject(&self->pyQuery, pyQuery, true);}
+			else {
+				PyErr_SetString(PyExc_TypeError, "Parameter 2 ('query') must be a string.");
+				return NULL;
+			}
 	}
 
 	if (!PxDynaset_Clear(self))
@@ -586,7 +590,6 @@ PxDynaset_execute(PxDynasetObject* self, PyObject* args, PyObject* kwds)
 	if (pyIterator == NULL) {
 		return NULL;
 	}
-
 	// make my columns' index numbers point to correct position in query result tuples
 	while (pyItem = PyIter_Next(pyIterator)) {
 		pyColumnName = PyTuple_GetItem(pyItem, 0);
@@ -624,7 +627,7 @@ PxDynaset_execute(PxDynasetObject* self, PyObject* args, PyObject* kwds)
 		if (PyList_Append(self->pyRows, pyRow) == -1) {
 			return NULL;
 		}
-        Py_DECREF(pyRow);
+		Py_DECREF(pyRow);
 		self->nRows++;
 	}
 	Py_DECREF(pyResult);
@@ -641,7 +644,7 @@ PxDynaset_execute(PxDynasetObject* self, PyObject* args, PyObject* kwds)
 		return NULL;
 
 	if (self->pyOnChangedCB) {
-		PyObject* pyArgs = Py_BuildValue("(OiO)", (PyObject*)self, -1,Py_None);
+		PyObject* pyArgs = Py_BuildValue("(OiO)", (PyObject*)self, -1, Py_None);
 		pyResult = PyObject_CallObject(self->pyOnChangedCB, pyArgs);
 		Py_XDECREF(pyArgs);
 		if (pyResult == NULL)
@@ -718,6 +721,20 @@ PxDynaset_Save(PxDynasetObject* self)
 	PyObject* pyOk;
 	char sMessage[30];
 
+	if (self->pyValidateCB) {
+		PyObject* pyArgs = PyTuple_Pack(1, (PyObject*)self);
+		//Py_INCREF(self);
+		PyObject* pyResult = PyObject_CallObject(self->pyValidateCB, pyArgs);
+		Py_DECREF(pyArgs);
+		if (pyResult == NULL)
+			return false;
+		else if (pyResult != Py_True) {
+			Py_DECREF(pyResult);
+			return true;
+		}
+		Py_DECREF(pyResult);
+	}
+
 	iRecordsChanged = PxDynaset_Write(self);
 	if (iRecordsChanged == -1) {
 		pyOk = PyObject_CallMethod(self->pyConnection, "rollback", NULL);
@@ -753,20 +770,6 @@ PxDynaset_Write(PxDynasetObject* self)
 	char* sSql2;
 	PxDynasetObject* pyChild;
 	Py_ssize_t n, nLen;
-
-	if (self->pyBeforeSaveCB) {
-		PyObject* pyArgs = PyTuple_Pack(1, (PyObject*)self);
-		//Py_INCREF(self);
-		PyObject* pyResult = PyObject_CallObject(self->pyBeforeSaveCB, pyArgs);
-		Py_DECREF(pyArgs);
-		if (pyResult == NULL)
-			return -1;
-		//else if (pyResult == Py_False) {
-		//	Py_DECREF(pyResult);
-		//	return 0;
-		//}
-		else Py_DECREF(pyResult);
-	}
 
 	// iterate over own rows
 	nLen = PySequence_Size(self->pyRows);
@@ -857,6 +860,14 @@ PxDynaset_Write(PxDynasetObject* self)
 				return -1;
 			}
 
+			if (self->bHasWhoCols) {
+				sSql = StringAppend(sSql, "ModDate,ModUser,");
+				sSql2 = StringAppend(sSql2, "CURRENT_TIMESTAMP,?,");
+				if (PyList_Append(pyParams, PyLong_FromLong(g.iCurrentUser)) == -1) {
+					return -1;
+				}
+			}
+
 			memset(sSql + strlen(sSql) - 1, '\0', 1); // cut off final comma
 			memset(sSql2 + strlen(sSql2) - 1, '\0', 1);
 			sSql = StringAppend2(sSql, sSql2, ");");
@@ -931,15 +942,22 @@ PxDynaset_Write(PxDynasetObject* self)
 				}
 			}
 
+			if (PySequence_Size(pyParams2) == 0) {
+				PyErr_SetString(PyExc_RuntimeError, "No key columns given. Cannot update.");
+				return -1;
+			}
+
+			if (self->bHasWhoCols) {
+				sSql = StringAppend(sSql, "ModDate=CURRENT_TIMESTAMP,ModUser=?,");
+				if (PyList_Append(pyParams1, PyLong_FromLong(g.iCurrentUser)) == -1) {
+					return -1;
+				}
+			}
+
 			if ((pyParams = PySequence_Concat(pyParams1, pyParams2)) == NULL)
 				return -1;
 			Py_XDECREF(pyParams1);
 			Py_XDECREF(pyParams2);
-
-			if (PySequence_Size(pyParams) == 0) {
-				PyErr_SetString(PyExc_RuntimeError, "No key columns given. Can not update.");
-				return -1;
-			}
 
 			memset(sSql + strlen(sSql) - 1, '\0', 1); // cut off final comma
 			memset(sSql2 + strlen(sSql2) - 5, '\0', 1); // cut off final ' AND '
@@ -1094,7 +1112,8 @@ PxDynaset_NewRow(PxDynasetObject* self, Py_ssize_t nRow)
 								return false;
 						}
 					}
-					Py_INCREF(pyData);
+					else
+						Py_INCREF(pyData);
 				}
 			}
 			PyTuple_SET_ITEM(self->pyEmptyRowData, nCol, pyData);
@@ -1168,15 +1187,15 @@ PxDynaset_Undo(PxDynasetObject* self, Py_ssize_t nRow)
 	PyObject* pyRow = PyList_GetItem(self->pyRows, nRow);
 
 	if ((pyRowDataOld = PyStructSequence_GetItem(pyRow, PXDYNASETROW_DATAOLD)) != Py_None) { // old data
-        PyObject* pyRowData = PyStructSequence_GetItem(pyRow, PXDYNASETROW_DATA);
-        Py_DECREF(pyRowData);
-        PyStructSequence_SetItem(pyRow, PXDYNASETROW_DATA, pyRowDataOld);
-        PyStructSequence_SetItem(pyRow, PXDYNASETROW_DATAOLD, Py_None);
-        if (!PxDynaset_DataChanged(self, nRow, NULL))
-            return false;
+		PyObject* pyRowData = PyStructSequence_GetItem(pyRow, PXDYNASETROW_DATA);
+		Py_DECREF(pyRowData);
+		PyStructSequence_SetItem(pyRow, PXDYNASETROW_DATA, pyRowDataOld);
+		PyStructSequence_SetItem(pyRow, PXDYNASETROW_DATAOLD, Py_None);
+		if (!PxDynaset_DataChanged(self, nRow, NULL))
+			return false;
 	}
-	if (! PxDynaset_Thaw(self))
-        return false;
+	if (!PxDynaset_Thaw(self))
+		return false;
 	return PxDynaset_UnStain(self);
 }
 
@@ -1214,7 +1233,6 @@ PxDynaset_RemoveWidget(PxDynasetObject* self, PxWidgetObject *pyWidget)
 	return true;
 }
 
-
 static bool
 PxDynaset_Edit(PxDynasetObject* self)
 {
@@ -1233,7 +1251,7 @@ PxDynaset_Edit(PxDynasetObject* self)
 			//
 		}
 		else if (pyBoundWidget->pyDataColumn) {
-			bSensitive = !self->bReadOnly && !pyBoundWidget->bReadOnly /*&& !self->bLocked*/;
+			bSensitive = !self->bReadOnly && !pyBoundWidget->bReadOnly && self->nRow > -1/*&& !self->bLocked*/;
 			// readonly if widget is bound to auto column unless row is new
 			if (self->pyAutoColumn == PyStructSequence_GET_ITEM(pyBoundWidget->pyDataColumn, PXDYNASETCOLUMN_INDEX) &&
 				PyStructSequence_GET_ITEM(PyList_GetItem(self->pyRows, self->nRow), PXDYNASETROW_NEW) == Py_False)
@@ -1451,7 +1469,9 @@ PxDynaset_DataChanged(PxDynasetObject* self, Py_ssize_t nRow, PyObject* pyColumn
 	}
 
 	if (self->pyOnChangedCB) {
-		PyObject* pyArgs = Py_BuildValue("(OiO)", (PyObject*)self, nRow,pyColumn);
+		PyObject* pyArgs = Py_BuildValue("(OiO)", (PyObject*)self, nRow, (pyColumn ? pyColumn : Py_None));
+		if (pyArgs == NULL)
+			return false;
 		pyResult = PyObject_CallObject(self->pyOnChangedCB, pyArgs);
 		Py_XDECREF(pyArgs);
 		if (pyResult == NULL)
@@ -1514,8 +1534,8 @@ PxDynaset_RefreshBoundWidgets(PxDynasetObject* self, bool bNonTable, bool bTable
 				return false;
 
 		if (pyResult) {
-		    Py_DECREF(pyResult);
-            //Py_DECREF(pyDependent); // for some mysterious reason PyObject_CallMethod increases the reference count
+			Py_DECREF(pyResult);
+			//Py_DECREF(pyDependent); // for some mysterious reason PyObject_CallMethod increases the reference count
 		}
 	}
 	return true;
@@ -1565,12 +1585,6 @@ PxDynaset_UpdateControlWidgets(PxDynasetObject* self)
 		bEnable = self->nRow != -1;
 		gtk_widget_set_sensitive(self->pyOkButton->gtk, bEnable);
 	}
-/*
-	if (self->pyDialog && gtk_dialog_get_widget_for_response(self->pyDialog->gtk, GTK_RESPONSE_ACCEPT) != NULL) {
-		bEnable = self->nRow != -1;
-		gtk_dialog_set_response_sensitive(self->pyDialog->gtk, GTK_RESPONSE_ACCEPT, bEnable);
-	}
-*/
 	return true;
 }
 
@@ -1674,13 +1688,7 @@ PxDynaset_setattro(PxDynasetObject* self, PyObject* pyAttributeName, PyObject *p
 		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "buttonOK") == 0) {
 			PxAttachObject(&self->pyOkButton, pyValue, true);
 			gtk_button_set_image(self->pyOkButton->gtk, gtk_image_new_from_stock(GTK_STOCK_OK, GTK_ICON_SIZE_SMALL_TOOLBAR));
-		    gtk_widget_set_sensitive(self->pyOkButton->gtk, FALSE);
-			/*self->pyOkButton->pyOnClickCB = PyCFunction_NewEx(&PxDynaset_ControlButtons[5], (PyObject*)self, NULL);
-		    //XX(pyValue);
-			if (self->pyOkButton->pyOnClickCB == NULL) {
-				Py_DECREF(pyValue);
-				return -1;
-			}*/
+			gtk_widget_set_sensitive(self->pyOkButton->gtk, FALSE);
 			return 0;
 		}
 		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "on_parent_changed") == 0) {
@@ -1707,11 +1715,11 @@ PxDynaset_setattro(PxDynasetObject* self, PyObject* pyAttributeName, PyObject *p
 				return -1;
 			}
 		}
-		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "before_save") == 0) {
+		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "validate") == 0) {
 			if (PyCallable_Check(pyValue)) {
 				Py_XINCREF(pyValue);
-				Py_XDECREF(self->pyBeforeSaveCB);
-				self->pyBeforeSaveCB = pyValue;
+				Py_XDECREF(self->pyValidateCB);
+				self->pyValidateCB = pyValue;
 				return 0;
 			}
 			else {
@@ -1793,6 +1801,14 @@ PxDynaset_getattro(PxDynasetObject* self, PyObject* pyAttributeName)
 			else
 				return PyLong_FromSsize_t(self->nRow);
 		}
+
+		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "frozen") == 0) {
+			PyErr_Clear();
+			if (self->bFrozen)
+				Py_RETURN_TRUE;
+			else
+				Py_RETURN_FALSE;
+		}
 		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "buttonSave") == 0) {
 			PyErr_Clear();
 			if (self->pySaveButton) {
@@ -1830,10 +1846,21 @@ PxDynaset_dealloc(PxDynasetObject* self)
 	Py_XDECREF(self->pyCursor);
 	Py_XDECREF(self->pyColumns);
 	Py_XDECREF(self->pyAutoColumn);
+	Py_XDECREF(self->pyParams);
 	Py_XDECREF(self->pyRows);
 	Py_XDECREF(self->pyChildren);
 	Py_XDECREF(self->pyEmptyRowData);
 	Py_XDECREF(self->pyQuery);
+	Py_XDECREF(self->pySearchButton);
+	Py_XDECREF(self->pyNewButton);
+	Py_XDECREF(self->pyEditButton);
+	Py_XDECREF(self->pyUndoButton);
+	Py_XDECREF(self->pySaveButton);
+	Py_XDECREF(self->pyDeleteButton);
+	Py_XDECREF(self->pyWidgets);
+	Py_XDECREF(self->pyOnParentSelectionChangedCB);
+	Py_XDECREF(self->pyOnChangedCB);
+	Py_XDECREF(self->pyValidateCB);
 	Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -1842,8 +1869,8 @@ static PyMemberDef PxDynaset_members[] = {
 	{ "query", T_OBJECT, offsetof(PxDynasetObject, pyQuery), 0, "Query string" },
 	{ "autoExecute", T_BOOL, offsetof(PxDynasetObject, bAutoExecute), 0, "Execute query if parent row has changed." },
 	{ "readOnly", T_BOOL, offsetof(PxDynasetObject, bReadOnly), 0, "Data can not be edited." },
-	//{ "buttonOK", T_OBJECT, offsetof(PxDynasetObject, pyOkButton), 0, "Close the dialog." },
-	{ "buttonSearch", T_OBJECT, offsetof(PxDynasetObject, pySearchButton), 0, "Execute seach." },
+	{ "whoCols", T_BOOL, offsetof(PxDynasetObject, bHasWhoCols), 0, "The table has columns ModDate and ModUser."  },
+	{ "connecion", T_OBJECT, offsetof(PxDynasetObject, pyConnection), 0, "Database connection" },
 	{ NULL }
 };
 

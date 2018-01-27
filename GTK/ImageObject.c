@@ -22,6 +22,7 @@ PxImage_init(PxImageObject* self, PyObject* args, PyObject* kwds)
 		return -1;
 
 	self->gtk = gtk_button_new();
+	g_signal_connect(G_OBJECT(self->gtk), "destroy", G_CALLBACK(GtkWidget_DestroyCB), (gpointer)self);
 	gtk_button_set_relief(GTK_BUTTON(self->gtk), GTK_RELIEF_NONE);
 
 	self->gtkImage = gtk_image_new_from_pixbuf(g.gdkPixbufPlaceHolder);
@@ -219,6 +220,11 @@ PxImage_getattro(PxImageObject* self, PyObject* pyAttributeName)
 static void
 PxImage_dealloc(PxImageObject* self)
 {
+	if (self->gtk) {
+		g_object_set_qdata(self->gtk, g.gQuark, NULL);
+		gtk_widget_destroy(self->gtk);
+	}
+	Py_XDECREF(self->pyImageFormat);
 	Py_TYPE(self)->tp_base->tp_dealloc((PyObject*)self);
 }
 

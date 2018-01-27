@@ -22,20 +22,21 @@ def launch():
     def entryFirstName__verify(widget, data):
         pylax.message("Nicht Geklückt! 品", "Gratuliere")
         return False
+
     labelFormCaption = pylax.Label(form, 1, 1, 40, 20, dynaset=ds, column="LastName", visible=False)
     labelFormCaption.captionClient = form # passes any assigment to property 'data' on to property 'caption' of the captionClient
 
     entrySearch = pylax.Entry(form, 70, 20, 160, 20, label = pylax.Label(form, 20, 20, 40, 20, "Search"))
-    ds.buttonSearch = pylax.Button(form, 240, 20, 60, 20, "Search")
-    ds.buttonSearch.on_click = buttonSearch__on_click
-    ds.buttonSearch.defaultEnter = True
+    buttonSearch = pylax.Button(form, 240, 20, 20, 20, "⏎")
+    buttonSearch.on_click = buttonSearch__on_click
+    buttonSearch.defaultEnter = True
 
     selectionTable = pylax.Table(form, 20, 70, -240, -55, dynaset=ds, label = pylax.Label(form, 20, 50, 90, 20, "Select:"))
     selectionTable.add_column("First Name", 70, "FirstName") # title, width, dataset
     selectionTable.add_column("Last Name", 150, "LastName") # title, width, dataset
     selectionTable.add_column("ID", 130, "PersonID") # title, width, dataset
 
-    imagePicture = pylax.ImageView(form, -130, 20, 90, 80, dynaset=ds, column="Picture", dataType=bytes)
+    #imagePicture = pylax.ImageView(form, -130, 20, 90, 80, dynaset=ds, column="Picture", dataType=bytes)
 
     entryID = pylax.Entry(form, -130, 120, 120, 20, dynaset=ds, column="PersonID", dataType=int, label = pylax.Label(form, -230, 120, 90, 20, "ID"))
     entryID.editFormat="{:,}"
@@ -58,15 +59,11 @@ def launch():
 
     #r = ds.execute()
     #ds.row = 0
-    #print("b",form.bottom)
 
 
 def buttonSearch__on_click(self):
-    #pylax.message(str(ds.lastUpdateSQL))
-    #pylax.message("Geklückt! 品", "Gratuliere")
     if entrySearch.data == None:
-        r = ds.execute(query = "SELECT PersonID, FirstName, LastName, Picture FROM Person;")
+        r = ds.execute(query = "SELECT PersonID, FirstName, LastName, Picture FROM Person ORDER BY LastName DESC LIMIT 100;")
     else:
-        #ds.query = "SELECT PersonID, FirstName, LastName, Picture FROM Person WHERE LastName LIKE :LastName;"
-        r = ds.execute({"LastName": entrySearch.data}, "SELECT PersonID, FirstName, LastName, Picture FROM Person WHERE LastName LIKE :LastName;")
+        r = ds.execute({"LastName": entrySearch.data}, "SELECT PersonID, FirstName, LastName, Picture FROM Person WHERE LastName LIKE :LastName ORDER BY LastName DESC LIMIT 100;")
 

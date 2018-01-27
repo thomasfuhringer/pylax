@@ -205,7 +205,7 @@ GtkAppActivateEventCB(GtkApplication* app, gpointer gUserData)
 	//-------------------------------------
 	//OpenApp("/media/tfu/OTG/Pylax/Apps/Hello.pxa/Hello.px");
 	//OpenApp("/media/tfu/OTG/Pylax/Apps/Test.pxa/Test.px");
-	OpenApp("/media/tfu/OTG/Pylax/GTK/Test.px");
+	//OpenApp("/media/tfu/OTG/Pylax/GTK/Test.px");
 }
 
 static bool
@@ -282,13 +282,13 @@ OpenApp(char* sFileNamePath)
 
 	g.iCurrentUser = 0;
 
-	// Check if Px tables exist.
 	PyObject* pyCursor = NULL, *pyResult = NULL;
 	if ((pyCursor = PyObject_CallMethod(g.pyConnection, "cursor", NULL)) == NULL) {
 		ErrorDialog("Can not access database (cursor creation failed).");
 		return false;
 	}
 
+	// Check if Px tables exist.
 	if ((pyResult = PyObject_CallMethod(pyCursor, "execute", "(s)",
 		"SELECT name FROM sqlite_master WHERE type='table' AND name='PxWindow';")) == NULL) {
 		ErrorDialog("Can not access database (execution failed).");
@@ -319,7 +319,6 @@ OpenApp(char* sFileNamePath)
 	// check if script imported Hinterland and obtain pointer to class 'Client'
 	PyObject* pyModuleDict = PyImport_GetModuleDict();
 	PyObject* pyHinterlandModule = PyDict_GetItemString(pyModuleDict, "hinterland");
-	//Xx("hinterland", pyHinterlandModule);
 	if (pyHinterlandModule) {
 		g.pyHinterlandClientType = PyObject_GetAttrString(pyHinterlandModule, "Client");
 		if (!g.pyHinterlandClientType) {
