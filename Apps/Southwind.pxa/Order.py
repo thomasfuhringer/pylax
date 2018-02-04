@@ -4,13 +4,11 @@ import datetime
 #ds = None
 
 def launch():
-    print("HI")
     ds = pylax.Dynaset("SalesOrder", "SELECT OrderID, Customer, LE.Name AS CustomerName, OrderDate FROM SalesOrder JOIN le ON LeID=Customer WHERE LE.Name LIKE :Name ORDER BY OrderDate DESC LIMIT 100;")
     ds.autoColumn = ds.add_column("OrderID", int, key=True)
     ds.add_column("Customer", int)
     ds.add_column("CustomerName", str, None)
     dt = ds.add_column("OrderDate", datetime.datetime, False, format="{:%Y-%m-%d}", default = datetime.datetime.now())
-    print(ds)
 
     dsOrderLine = pylax.Dynaset("OrderLine", "SELECT OrderLine.OrderID AS OrderID, Item, Quantity, Price, Quantity * Price AS Amount, OrderLine.rowid AS RowID FROM OrderLine JOIN SalesOrder ON SalesOrder.OrderID=OrderLine.OrderID WHERE OrderLine.OrderID=:OrderID LIMIT 10000;", parent=ds)
     dsOrderLine.add_column("RowID", int, key=True)
@@ -28,11 +26,13 @@ def launch():
     form.before_close=Form__before_close
     labelFormCaption = pylax.Label(form, 2, 2, 20, 60, "FormCaption", dynaset=ds, column="CustomerName", visible = False)
     labelFormCaption.captionClient = form # passes any assigment to property 'data' on to property 'caption' of the captionClient
+    print(ds)
 
     tableSelect = pylax.Table(form, 20, 44, -20, 100, dynaset=ds)
     tableSelect.add_column("Customer", 150, "CustomerName")
     tableSelect.add_column("ID", 30, "OrderID")
     tableSelect.add_column("Date", 90, "OrderDate", format="{:%y-%m-%d}")
+    print(ds)
 
 
     entrySearch = pylax.Entry(form, 90, 20, 120, 20, "Search Name") #, label = pylax.Label(form, 20, 20, 70, 20, "Search"))

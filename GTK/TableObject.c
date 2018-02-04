@@ -4,7 +4,7 @@
 static void GtkTreeCell_Render(GtkTreeViewColumn* gtkTreeViewColumn, GtkCellRenderer* gtkCellRenderer, GtkTreeModel* gtkTreeModel, GtkTreeIter* gtkTreeIter, gpointer gUserData);
 static void GtkTreeCell_RenderRowIndicator(GtkTreeViewColumn* gtkTreeViewColumn, GtkCellRenderer* gtkCellRenderer, GtkTreeModel* gtkTreeModel, GtkTreeIter* gtkTreeIter, gpointer gUserData);
 static void GtkTreeSelection_ChangedCB(GtkTreeSelection* gtkTreeSelection, gpointer gUserData);
-static void GtkCellRenderer_TextEditedCB(GtkCellRendererText* gtkCellRendererText, GtkTreePath* gtkTreePath, gchar* sText, gpointer gUserData);
+static void GtkCellRenderer_TextEditedCB(GtkCellRendererText* gtkCellRendererText, gchar* sPath, gchar* sText, gpointer gUserData);
 static void GtkCellRenderer_EditingStartedCB(GtkCellRendererText* gtkCellRendererText, GtkCellEditable* gtkCellEditable, const gchar* sPath, gpointer gUserData);
 static gboolean GtkTreeView_FocusInEventCB(GtkWidget* gtkWidget, GdkEvent* gdkEvent, gpointer gUserData);
 
@@ -429,14 +429,11 @@ GtkTreeSelection_ChangedCB(GtkTreeSelection* gtkTreeSelection, gpointer gUserDat
 }
 
 static void
-GtkCellRenderer_TextEditedCB(GtkCellRendererText* gtkCellRendererText, GtkTreePath* gtkTreePath, gchar* sText, gpointer gUserData)
+GtkCellRenderer_TextEditedCB(GtkCellRendererText* gtkCellRendererText, gchar* sPath, gchar* sText, gpointer gUserData)
 {
-	g_debug("sText %s", sText);
 	PyObject* pyCurrentData = NULL, *pyNewData = NULL;
 	PxTableColumnObject* self = (PxTableColumnObject*)gUserData;
-	gint* gIndices = gtk_tree_path_get_indices(gtkTreePath);
-	gint iRow = gIndices[0];
-	g_debug("iRow %d", iRow);
+	gint* iRow = atoi(sPath);
 
 	int iR = PxWindow_MoveFocus(self->pyTable->pyWindow, (PxWidgetObject*)self);
 	if (iR == -1)
@@ -465,16 +462,12 @@ static void
 GtkCellRenderer_EditingStartedCB(GtkCellRendererText* gtkCellRendererText, GtkCellEditable* gtkCellEditable, const gchar* sPath, gpointer gUserData)
 {
 	PyObject* pyCurrentData = NULL;
-	g_debug("GtkCellRenderer_EditingStartedCB");
-
-	if (GTK_IS_ENTRY(gtkCellEditable))
-
-	{
+	if (GTK_IS_ENTRY(gtkCellEditable)) {
 		GtkEntry* gtkEntry = GTK_ENTRY(gtkCellEditable);
 		GtkTreePath* gtkTreePath = gtk_tree_path_new_from_string(sPath);
 		gint* gIndices = gtk_tree_path_get_indices(gtkTreePath);
 		gint iRow = gIndices[0];
-		g_object_unref(gtkTreePath);
+		gtk_tree_path_free(gtkTreePath);
 
 		PxTableColumnObject* self = (PxTableColumnObject*)gUserData;
 		pyCurrentData = PxDynaset_GetData(self->pyTable->pyDynaset, (Py_ssize_t)iRow, self->pyDynasetColumn);
@@ -534,6 +527,93 @@ PxTableColumn_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 		return NULL;
 }
 
+static PyObject*  // new ref
+PxTableColumn_get_input_data(PxEntryObject* self)
+{
+	PyObject* pyData;
+	const gchar* sText = gtk_entry_get_text(self->gtk);
+	if ((pyData = PxParseString(sText, self->pyDataType, NULL)) == NULL) {
+		PythonErrorDialog();
+		Py_RETURN_NONE;
+	}
+	return pyData;
+}
+
+static PyObject*  // new ref, True if possible to move focus away
+PxTableColumn_render_focus(PxEntryObject* self)
+{
+	PyObject* pyData = NULL, *pyResult = NULL;
+
+	if (self->bClean) {
+		Py_RETURN_TRUE;
+	}
+	/*
+		pyData = PxTableColumn_get_input_data(self);
+		if (pyData == NULL)
+			return NULL;
+		if (PyObject_RichCompareBool(self->pyData, pyData, Py_EQ)) {  // no true changes were made
+			Py_DECREF(pyData);
+			PxDynaset_Thaw(self->pyDynaset);
+			self->bClean = true;
+			Py_RETURN_TRUE;
+		}
+
+		if (self->pyValidateCB) {
+			PyObject* pyArgs = PyTuple_Pack(2, (PyObject*)self, pyData);
+			pyResult = PyObject_CallObject(self->pyValidateCB, pyArgs);
+			Py_DECREF(pyArgs);
+			if (pyResult == NULL)
+				return NULL;
+			else if (pyResult == Py_False) { // "validate" function of Widget is supposed to return False if data declined.
+				gtk_widget_grab_focus(self->gtk);
+				return pyResult;
+			}
+			else if (pyResult == PyExc_Warning) { // callback has taken care of populating widget
+				self->bClean = true;
+				Py_XDECREF(pyResult);
+				pyResult = PxEntry_refresh(self);
+				if (pyResult == NULL)
+					return NULL;
+				Py_XDECREF(pyResult);
+				Py_RETURN_TRUE;
+			}
+			else if (pyResult != Py_True) {
+				PyErr_SetString(PyExc_RuntimeError, "'verify' function of Widget has to return a boolean.");
+				return NULL;
+			}
+			Py_XDECREF(pyResult);
+		}
+
+		if (!PxEntry_SetData(self, pyData))
+			return NULL;
+	*/
+	self->bClean = true;
+	Py_RETURN_TRUE;
+}
+
+static int
+PxTableColumn_setattro(PxWidgetObject* self, PyObject* pyAttributeName, PyObject *pyValue)
+{
+	if (PyUnicode_Check(pyAttributeName)) {
+
+		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "validate") == 0) {
+			if (PyCallable_Check(pyValue)) {
+				Py_XINCREF(pyValue);
+				Py_XDECREF(self->pyValidateCB);
+				self->pyValidateCB = pyValue;
+				return 0;
+			}
+			else {
+				PyErr_SetString(PyExc_TypeError, "Assigned object must be callable.");
+				return -1;
+			}
+		}
+	}
+	if (PyObject_GenericSetAttr((PyObject*)self, pyAttributeName, pyValue) < 0)
+		return -1;
+	return  0;
+}
+
 static void
 PxTableColumn_dealloc(PxTableColumnObject* self)
 {
@@ -553,6 +633,7 @@ static PyMemberDef PxTableColumn_members[] = {
 };
 
 static PyMethodDef PxTableColumn_methods[] = {
+	{ "render_focus", (PyCFunction)PxTableColumn_render_focus, METH_NOARGS, "Return True if ready for focus to move on." },
 	{ NULL }
 };
 
@@ -574,7 +655,7 @@ PyTypeObject PxTableColumnType = {
 	0,                         /* tp_call */
 	0,                         /* tp_str */
 	0,                         /* tp_getattro */
-	0,                         /* tp_setattro */
+	PxTableColumn_setattro,    /* tp_setattro */
 	0,                         /* tp_as_buffer */
 	Py_TPFLAGS_DEFAULT,        /* tp_flags */
 	"Colunm for a Table widget", /* tp_doc */

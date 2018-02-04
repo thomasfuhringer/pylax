@@ -224,13 +224,13 @@ PxEntry_render_focus(PxEntryObject* self)
 			return pyResult;
 		}
 		else if (pyResult == PyExc_Warning) { // callback has taken care of populating widget
-	        self->bClean = true;
-		Py_XDECREF(pyResult);
-	        pyResult = PxEntry_refresh(self);
-		if (pyResult == NULL)
-			return NULL;
-		Py_XDECREF(pyResult);
-	        Py_RETURN_TRUE;
+			self->bClean = true;
+			Py_XDECREF(pyResult);
+			pyResult = PxEntry_refresh(self);
+			if (pyResult == NULL)
+				return NULL;
+			Py_XDECREF(pyResult);
+			Py_RETURN_TRUE;
 		}
 		else if (pyResult != Py_True) {
 			PyErr_SetString(PyExc_RuntimeError, "'verify' function of Widget has to return a boolean.");

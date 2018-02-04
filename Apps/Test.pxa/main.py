@@ -2,9 +2,6 @@
 
 import pylax
 
-def sayHelloMenuItem__on_click():
-    pylax.status_message("Hellö!")
-
 def aboutBoxMenuItem__on_click():
     aboutBox = pylax.Window(None,  0, 0, 320, 160, "About")
     aboutBox.minHeight = 100
@@ -12,56 +9,47 @@ def aboutBoxMenuItem__on_click():
     label.alignHoriz, label.alignVert = pylax.Align.center, pylax.Align.center
     aboutBox.visible = True
 
-sayHelloMenuItem = pylax.MenuItem("Say Hello", sayHelloMenuItem__on_click)
-pylax.append_menu_item(sayHelloMenuItem)
-aboutBoxMenuItem = pylax.MenuItem("About...", aboutBoxMenuItem__on_click)
-pylax.append_menu_item(aboutBoxMenuItem)
-
-ds = pylax.Dynaset("Item", "SELECT ItemID, Name, Description, Picture, Price FROM Item WHERE Item.Name LIKE :Name ORDER BY Name DESC LIMIT 100;")
-ds.autoColumn = ds.add_column("ItemID", int, format="{:,}", key=True) # part of primary key
-ds.add_column("Name")
-ds.add_column("Description", str)
-ds.add_column("Picture", bytes)
-ds.add_column("Price", float)
-
-dsDetail = pylax.Dynaset("ItemSold", "SELECT ItemSold.rowid, Item, Customer, Customer.Name AS CustomerName, Quantity FROM ItemSold JOIN Customer ON ItemSold.Customer=Customer.CustomerID WHERE ItemSold.Item=:ItemID LIMIT 100;", parent=ds)
-dsDetail.autoColumn = dsDetail.add_column("rowid", int, key=True)
-dsDetail.add_column("Item", int, parent = "ItemID")
-dsDetail.add_column("Customer", int)
-dsDetail.add_column("CustomerName", str, key=None) # non database column
-dsDetail.whoCols = True
-dsDetailColumnQuantity = dsDetail.add_column("Quantity", int, format="{:,}")
-
-def dsDetail__on_changed(ds, row, column):
-    if column == dsDetailColumnQuantity or column is None:
-        entryTotalQuanity.data = ds.get_column_data_sum("Quantity")
-dsDetail.on_changed = dsDetail__on_changed
-
-form = pylax.Form(None, 20, 10, 680, 480, "Item", ds)
-
-labelFormCaption = pylax.Label(form, 1, 1, 40, 20, dynaset=ds, column="Name", visible=False)
-labelFormCaption.captionClient = form # passes any assigment to property 'data' on to property 'caption' of the captionClient
-
-ds.buttonEdit = pylax.Button(form, -360, -40, 60, 20, "Edit")
-ds.buttonNew = pylax.Button(form, -290, -40, 60, 20, "New")
-ds.buttonDelete = pylax.Button(form, -220, -40, 60, 20, "Delete")
-ds.buttonUndo = pylax.Button(form, -150, -40, 60, 20, "Undo")
-ds.buttonSave = pylax.Button(form, -80, -40, 60, 20, "Save")
-
-tab = pylax.Tab(form, 2, 2, -2, -55)
-tabPageMain = pylax.TabPage(tab, 0, 0, 0, 0, "Main")
-tabPagePicture = pylax.TabPage(tab, 0, 0, 0, 0, "Picture")
+def sayHelloMenuItem__on_click():
+    pylax.status_message("Hellö!")
 
 def buttonSearch__on_click(self):
     r = ds.execute({"Name": entrySearch.data})
     if r > 0:
         ds.row = 0
 
+def detailColumnQuantity__default():
+    return 12
+
+def dsDetail__on_changed(ds, row, column):
+    if column == dsDetailColumnQuantity or column is None:
+        entryTotalQuanity.data = ds.get_column_data_sum("Quantity")
+
 def entryQuanity__validate(widget, data):
     if not data >= 0:
         pylax.message("Please enter a positive number!")
         return False
     return True
+
+def entryCustomer__validate(self, data):
+    selector = Selector()
+    if selector.validate(data):
+        return True
+    else:
+        selector.dialog(data)
+        if selector.ok:
+            self.dynaset.set_data("Customer", selector.dynaset.get_row_data()["CustomerID"])
+            self.dynaset.set_data("CustomerName", selector.dynaset.get_row_data()["Name"])
+            return Warning
+        else:
+            return False
+
+def entryCustomer__on_click_button(self):
+    selector = Selector()
+    selector.dialog("")
+    if selector.ok:
+        self.dynaset.set_data("Customer", selector.dynaset.get_row_data()["CustomerID"])
+        self.dynaset.set_data("CustomerName", selector.dynaset.get_row_data()["Name"])
+
 
 class Selector():
     def __init__(self):
@@ -104,25 +92,42 @@ class Selector():
         self.window.close()
 
 
-def entryCustomer__validate(self, data):
-    selector = Selector()
-    if selector.validate(data):
-        return True
-    else:
-        selector.dialog(data)
-        if selector.ok:
-            self.dynaset.set_data("Customer", selector.dynaset.get_row_data()["CustomerID"])
-            self.dynaset.set_data("CustomerName", selector.dynaset.get_row_data()["Name"])
-            return Warning
-        else:
-            return False
+sayHelloMenuItem = pylax.MenuItem("Say Hello", sayHelloMenuItem__on_click)
+pylax.append_menu_item(sayHelloMenuItem)
+aboutBoxMenuItem = pylax.MenuItem("About...", aboutBoxMenuItem__on_click)
+pylax.append_menu_item(aboutBoxMenuItem)
 
-def entryCustomer__on_click_button(self):
-    selector = Selector()
-    selector.dialog("")
-    if selector.ok:
-        self.dynaset.set_data("Customer", selector.dynaset.get_row_data()["CustomerID"])
-        self.dynaset.set_data("CustomerName", selector.dynaset.get_row_data()["Name"])
+ds = pylax.Dynaset("Item", "SELECT ItemID, Name, Description, Picture, Price FROM Item WHERE Item.Name LIKE :Name ORDER BY Name DESC LIMIT 100;")
+ds.autoColumn = ds.add_column("ItemID", int, format="{:,}", key=True) # part of primary key
+ds.add_column("Name", default = "Another One")
+ds.add_column("Description", str)
+ds.add_column("Picture", bytes)
+ds.add_column("Price", float)
+
+dsDetail = pylax.Dynaset("ItemSold", "SELECT ItemSold.rowid, Item, Customer, Customer.Name AS CustomerName, Quantity FROM ItemSold JOIN Customer ON ItemSold.Customer=Customer.CustomerID WHERE ItemSold.Item=:ItemID LIMIT 100;", parent=ds)
+dsDetail.autoColumn = dsDetail.add_column("rowid", int, key=True)
+dsDetail.add_column("Item", int, parent = "ItemID")
+dsDetail.add_column("Customer", int)
+dsDetail.add_column("CustomerName", str, key=None) # non database column
+dsDetail.whoCols = True
+dsDetailColumnQuantity = dsDetail.add_column("Quantity", int, format="{:,}", defaultFunction = detailColumnQuantity__default)
+dsDetail.on_changed = dsDetail__on_changed
+
+# GUI
+form = pylax.Form(None, 20, 10, 680, 480, "Item", ds)
+
+labelFormCaption = pylax.Label(form, 1, 1, 40, 20, dynaset=ds, column="Name", visible=False)
+labelFormCaption.captionClient = form # passes any assigment to property 'data' on to property 'caption' of the captionClient
+
+ds.buttonEdit = pylax.Button(form, -360, -40, 60, 20, "Edit")
+ds.buttonNew = pylax.Button(form, -290, -40, 60, 20, "New")
+ds.buttonDelete = pylax.Button(form, -220, -40, 60, 20, "Delete")
+ds.buttonUndo = pylax.Button(form, -150, -40, 60, 20, "Undo")
+ds.buttonSave = pylax.Button(form, -80, -40, 60, 20, "Save")
+
+tab = pylax.Tab(form, 2, 2, -2, -55)
+tabPageMain = pylax.TabPage(tab, 0, 0, 0, 0, "Main")
+tabPagePicture = pylax.TabPage(tab, 0, 0, 0, 0, "Picture")
 
 entrySearch = pylax.Entry(tabPageMain, 70, 20, -420, 20, label = pylax.Label(tabPageMain, 20, 22, 40, 20, "Search"))
 entrySearch.data = "%"
@@ -146,7 +151,6 @@ entryPrice.format="{0:,.2f}"
 
 detailTable = pylax.Table(tabPageMain, -340, 40, -20, -170, dynaset=dsDetail, label = pylax.Label(tabPageMain, -340, 20, 90, 20, "Sold To"))
 detailTable.showRowIndicator = True
-#detailTable.add_column("Item", 70, "Item")
 detailTable.add_column("Customer Name", 120, "CustomerName")
 detailTable.add_column("Quantity", 100, "Quantity", editable = True)
 

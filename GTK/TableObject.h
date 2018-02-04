@@ -30,6 +30,7 @@ typedef struct _PxTableColumnObject
 	PyObject* pyFormat;
 	PyObject* pyFormatEdit;
 	bool bEditable;
+	PyObject* pyValidateCB;
 	//PxWidgetObject* pyWidget;
 	GtkTreeViewColumn* gtkTreeViewColumn;
 	GtkCellRenderer* gtkCellRenderer;

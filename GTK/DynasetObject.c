@@ -555,13 +555,14 @@ PxDynaset_execute(PxDynasetObject* self, PyObject* args, PyObject* kwds)
 	}
 
 	if (pyQuery) {
-		if (PyUnicode_Check(pyQuery)){
+		if (PyUnicode_Check(pyQuery)) {
 			if (self->pyQuery != pyQuery)
-				PxAttachObject(&self->pyQuery, pyQuery, true);}
-			else {
-				PyErr_SetString(PyExc_TypeError, "Parameter 2 ('query') must be a string.");
-				return NULL;
-			}
+				PxAttachObject(&self->pyQuery, pyQuery, true);
+		}
+		else {
+			PyErr_SetString(PyExc_TypeError, "Parameter 2 ('query') must be a string.");
+			return NULL;
+		}
 	}
 
 	if (!PxDynaset_Clear(self))

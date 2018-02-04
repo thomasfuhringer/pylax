@@ -69,7 +69,7 @@ ActionHelpAboutCB(GtkAction* action, gpointer gUserData)
 	GStrv sAuthors[] = AUTHORS;
 	gtk_show_about_dialog(g.gtkMainWindow,
 		"program-name", "Pylax",
-		"comments", "Database front end for SQLite\n\nBuild date:  " __DATE__,
+		"comments", "Build date:  " __DATE__ "\n\nDatabase front end for SQLite",
 		"version", VER_PRODUCTVERSION_STR,
 		"authors", sAuthors,
 		"website", "https://github.com/thomasfuhringer/pylax",
@@ -203,7 +203,7 @@ GtkAppActivateEventCB(GtkApplication* app, gpointer gUserData)
 	gtk_widget_show_all(g.gtkMainWindow);
 
 	//-------------------------------------
-	//OpenApp("/media/tfu/OTG/Pylax/Apps/Hello.pxa/Hello.px");
+	//OpenApp("/media/tfu/OTG/Pylax/Apps/Southwind.pxa/Southwind.px");
 	//OpenApp("/media/tfu/OTG/Pylax/Apps/Test.pxa/Test.px");
 	//OpenApp("/media/tfu/OTG/Pylax/GTK/Test.px");
 }

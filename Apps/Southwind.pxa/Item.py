@@ -17,10 +17,12 @@ def launch():
     selectionTable.add_column("Description", 100, "Description")
 
     imagePicture = pylax.Image(form, -330, 20, 320, 320, dynaset=ds, column="Picture")
-#form.buttonCancel = pylax.Button(form, -60, -40, 50, 20, "Cancel")
+
+    ds.buttonEdit = pylax.Button(form, -360, -40, 60, 20, "Edit")
+    ds.buttonNew = pylax.Button(form, -290, -40, 60, 20, "New")
+    ds.buttonDelete = pylax.Button(form, -220, -40, 60, 20, "Delete")
+    ds.buttonUndo = pylax.Button(form, -150, -40, 60, 20, "Undo")
+    ds.buttonSave = pylax.Button(form, -80, -40, 60, 20, "Save")
 
     r = ds.execute()
-
-
-
 
