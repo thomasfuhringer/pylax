@@ -8,6 +8,7 @@
 .. moduleauthor:: Thomas Führinger <thomasfuhringer@gmail.com>
 
 **Binaries:** http://www.pylax.org
+
 **Source code:** https://github.com/thomasfuhringer/pylax
 
 --------------
@@ -151,7 +152,7 @@ Module Functions and Constants
 .. data:: version_info
 
     The version number as a tuple of integers.
-    
+
 
 .. data:: copyright
 
