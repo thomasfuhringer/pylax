@@ -15,6 +15,8 @@
 // GTK Header Files
 #include <gtk/gtk.h>
 
+#include "Hinterland.h"
+
 // Pylax Classes
 #include "Version.h"
 #include "DynasetObject.h"
@@ -58,7 +60,7 @@ typedef struct _PxGlobals
 	char*  sOpenFileName;
 	PyObject* pyPylaxModule;
 	PyObject* pySQLiteModule;
-	PyObject* pyHinterlandClientType;
+	PyTypeObject* pySQLiteConnectionType;
 	PyObject* pyUserModule;
 	PyObject* pyConnection;
 	bool bConnectionHasPxTables;
@@ -74,7 +76,5 @@ typedef struct _PxGlobals
 PxGlobals;
 
 extern PxGlobals g;
-
-PyTypeObject* pySQLiteConnectionType;
 
 #endif

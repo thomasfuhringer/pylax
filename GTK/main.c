@@ -3,6 +3,7 @@
 #include "Pylax.h"
 
 PxGlobals g;   // global singleton
+PxHinterlandGlobals hl;
 static bool OpenApp(char* sFileNamePath);
 
 PyMODINIT_FUNC PyInit_pylax(void);
@@ -205,6 +206,7 @@ GtkAppActivateEventCB(GtkApplication* app, gpointer gUserData)
 	//-------------------------------------
 	//OpenApp("/media/tfu/OTG/Pylax/Apps/Southwind.pxa/Southwind.px");
 	//OpenApp("/media/tfu/OTG/Pylax/Apps/Test.pxa/Test.px");
+	OpenApp("/media/tfu/OTG/Pylax/Apps/Hinterland.pxa/HinterlandTest.px");
 	//OpenApp("/media/tfu/OTG/Pylax/GTK/Test.px");
 }
 
@@ -237,8 +239,8 @@ OpenApp(char* sFileNamePath)
 		return;
 	}
 
-	pySQLiteConnectionType = (PyTypeObject*)PyObject_GetAttrString(g.pySQLiteModule, "Connection");
-	if (pySQLiteConnectionType == NULL) {
+	g.pySQLiteConnectionType = (PyTypeObject*)PyObject_GetAttrString(g.pySQLiteModule, "Connection");
+	if (g.pySQLiteConnectionType == NULL) {
 		ErrorDialog("Cannot get SQLite Connection type");
 		return;
 	}
@@ -316,17 +318,7 @@ OpenApp(char* sFileNamePath)
 		return false;
 	}
 
-	// check if script imported Hinterland and obtain pointer to class 'Client'
-	PyObject* pyModuleDict = PyImport_GetModuleDict();
-	PyObject* pyHinterlandModule = PyDict_GetItemString(pyModuleDict, "hinterland");
-	if (pyHinterlandModule) {
-		g.pyHinterlandClientType = PyObject_GetAttrString(pyHinterlandModule, "Client");
-		if (!g.pyHinterlandClientType) {
-			ErrorDialog("Can not load Python type 'Client'");
-			return false;
-		}
-		//Xx("hinterland client", g.pyHinterlandClientType);
-	}
+	Hinterland_Init();
 
 	gchar* sTitle = g_strconcat(sFileName, " - Pylax", NULL);
 	gtk_window_set_title(GTK_WINDOW(g.gtkMainWindow), sTitle);
@@ -340,6 +332,7 @@ OpenApp(char* sFileNamePath)
 	gtk_action_set_sensitive(GTK_ACTION(g.gtkActionFileClose), TRUE);
 	return true;
 }
+
 
 int
 main(int argc, char **argv)
@@ -377,7 +370,7 @@ Pylax_message(PyObject* self, PyObject* args)
 		gtk_window_set_title(GTK_WINDOW(gtkDialog), sTitle);
 	gtk_dialog_run(GTK_DIALOG(gtkDialog));
 	gtk_widget_destroy(gtkDialog);
-	return PyLong_FromLong(1);
+	Py_RETURN_NONE;
 }
 
 PyObject*
@@ -389,7 +382,7 @@ Pylax_status_message(PyObject* self, PyObject* args)
 		return NULL;
 
 	gtk_statusbar_push(g.gtkStatusbar, 1, sMessage);
-	return PyLong_FromLong(1);
+	Py_RETURN_NONE;
 }
 
 PyObject*

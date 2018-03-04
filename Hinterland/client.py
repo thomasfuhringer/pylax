@@ -125,7 +125,7 @@ else:
         print("SetPage Failed:", session.status_message)
 
 """
-if session.exchange({hl.Msg.Type: hl.Msg.Get, "Entity": "Item"}):
+if session.exchange({hl.Msg.Type: hl.Msg.Get, "Entity": "Item", "Parameters": {"Name": "A%"}}):
     print(session.msg["Data"])
 else:
     print("Get Entity Failed:", session.status_message)

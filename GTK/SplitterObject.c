@@ -28,6 +28,7 @@ PxSplitter_init(PxSplitterObject* self, PyObject* args, PyObject *kwds)
 		return -1;
 
 	self->gtk = gtk_paned_new(self->bVertical ? GTK_ORIENTATION_HORIZONTAL : GTK_ORIENTATION_VERTICAL);
+	g_signal_connect(G_OBJECT(self->gtk), "destroy", G_CALLBACK(GtkWidget_DestroyCB), (gpointer)self);
 
 	PyObject* pyArgList = Py_BuildValue("Oiiii", (PyObject*)self, 0, 0, 0, 0);
 	self->pyBox1 = PyObject_CallObject((PyObject *)&PxBoxType, pyArgList);
@@ -130,6 +131,10 @@ NotifyPositionEventCB(GObject* gObject, GParamSpec* gParamSpec, gpointer pUserDa
 static void
 PxSplitter_dealloc(PxSplitterObject* self)
 {
+	if (self->gtk) {
+		g_object_set_qdata(self->gtk, g.gQuark, NULL);
+		gtk_widget_destroy(self->gtk);
+	}
 	Py_XDECREF(self->pyBox1);
 	Py_XDECREF(self->pyBox2);
 	Py_TYPE(self)->tp_base->tp_dealloc((PxWidgetObject *)self);

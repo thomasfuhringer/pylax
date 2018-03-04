@@ -19,6 +19,7 @@ PxBox_init(PxBoxObject* self, PyObject* args, PyObject* kwds)
 
 	self->gtkFixed = gtk_fixed_new();
 	self->gtk = self->gtkFixed;
+	g_signal_connect(G_OBJECT(self->gtk), "destroy", G_CALLBACK(GtkWidget_DestroyCB), (gpointer)self);
 	if (self->pyParent->gtkFixed)
 		gtk_fixed_put(self->pyParent->gtkFixed, self->gtk, 0, 0);
 	gtk_widget_show(self->gtk);
@@ -31,6 +32,10 @@ PxBox_init(PxBoxObject* self, PyObject* args, PyObject* kwds)
 static void
 PxBox_dealloc(PxBoxObject* self)
 {
+	if (self->gtk) {
+		g_object_set_qdata(self->gtk, g.gQuark, NULL);
+		gtk_widget_destroy(self->gtk);
+	}
 	Py_TYPE(self)->tp_base->tp_dealloc((PyObject *)self);
 }
 

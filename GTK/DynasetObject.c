@@ -102,7 +102,7 @@ PxDynaset_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 static int
 PxDynaset_init(PxDynasetObject* self, PyObject* args, PyObject* kwds)
 {
-	static char *kwlist[] = { "table", "query", "parent", "cnx", NULL };
+	static char *kwlist[] = { "table", "query", "parent", "connection", NULL };
 	PyObject* pyTable = NULL, *pyQuery = NULL, *pyParent = NULL, *pyConnection = NULL, *tmp;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|OOO", kwlist,
@@ -143,9 +143,7 @@ PxDynaset_init(PxDynasetObject* self, PyObject* args, PyObject* kwds)
 	}
 
 	if (pyConnection) {
-		//if (PyObject_TypeCheck(pyConnection, &pysqlite_ConnectionType)) {
-		//if pyConnectiono->ob_type == Hinterland...
-		if (true)
+		if (true) // PyObject_TypeCheck(pyConnection, g.pySQLiteConnectionType)
 			PxAttachObject(&self->pyConnection, pyConnection, true);
 		else {
 			PyErr_Format(PyExc_TypeError, "Parameter 4 ('cnx') must be a SQLite connection, not '%.200s'.", pyConnection->ob_type->tp_name);
@@ -567,72 +565,129 @@ PxDynaset_execute(PxDynasetObject* self, PyObject* args, PyObject* kwds)
 
 	if (!PxDynaset_Clear(self))
 		return NULL;
+	//Xx("conn ",self->pyConnection);
+	if (PyObject_TypeCheck(self->pyConnection, g.pySQLiteConnectionType)) {
+		// SQLite connection
 
-	if (self->pyCursor && PyObject_CallMethod(self->pyCursor, "close", NULL) == NULL)
-		return NULL;
-
-	if ((self->pyCursor = PyObject_CallMethod(self->pyConnection, "cursor", NULL)) == NULL) {
-		return NULL;
-	}
-
-	const char* sQuery = PyUnicode_AsUTF8(self->pyQuery);
-	if (pyParameters)
-		pyResult = PyObject_CallMethod(self->pyCursor, "execute", "(sO)", sQuery, pyParameters);
-	else
-		pyResult = PyObject_CallMethod(self->pyCursor, "execute", "(s)", sQuery);
-	if (pyResult == NULL) {
-		return NULL;
-	}
-
-	PyObject* pyColumnDescriptions = PyObject_GetAttrString(self->pyCursor, "description");
-	PyObject* pyIterator = PyObject_GetIter(pyColumnDescriptions);
-	PyObject* pyItem, *pyColumnName, *pyColumn, *pyIndex;
-	Py_ssize_t nIndex = 0;
-	if (pyIterator == NULL) {
-		return NULL;
-	}
-	// make my columns' index numbers point to correct position in query result tuples
-	while (pyItem = PyIter_Next(pyIterator)) {
-		pyColumnName = PyTuple_GetItem(pyItem, 0);
-		if (pyColumnName == NULL)
+		if (self->pyCursor && PyObject_CallMethod(self->pyCursor, "close", NULL) == NULL)
 			return NULL;
 
-		pyColumn = PyDict_GetItem(self->pyColumns, pyColumnName);
-		if (pyColumn != NULL) {
-			pyIndex = PyStructSequence_GetItem(pyColumn, PXDYNASETCOLUMN_INDEX);
-			Py_DECREF(pyIndex);
-			PyStructSequence_SetItem(pyColumn, PXDYNASETCOLUMN_INDEX, PyLong_FromSsize_t(nIndex));
-		}
-		else {
-			return PyErr_Format(PyExc_AttributeError, "Column '%s' of query not contained in Dynaset's column list.", PyUnicode_AsUTF8(pyColumnName));
-		}
-		nIndex++;
-		Py_DECREF(pyItem);
-	}
-	Py_DECREF(pyIterator);
-
-	// create Dynaset rows and reference to query result tuples
-	PyObject* pyRow = NULL;
-	self->nRows = 0;
-	while (pyItem = PyIter_Next(pyResult)) {
-		//Py_INCREF(pyItem); // ??
-		Py_INCREF(Py_None);
-		Py_INCREF(Py_False);
-		Py_INCREF(Py_False);
-		pyRow = PyStructSequence_New(&PxDynasetRowType);
-		PyStructSequence_SetItem(pyRow, PXDYNASETROW_DATA, pyItem);
-		PyStructSequence_SetItem(pyRow, PXDYNASETROW_DATAOLD, Py_None);
-		PyStructSequence_SetItem(pyRow, PXDYNASETROW_NEW, Py_False);
-		PyStructSequence_SetItem(pyRow, PXDYNASETROW_DELETE, Py_False);
-
-		if (PyList_Append(self->pyRows, pyRow) == -1) {
+		if ((self->pyCursor = PyObject_CallMethod(self->pyConnection, "cursor", NULL)) == NULL) {
 			return NULL;
 		}
-		Py_DECREF(pyRow);
-		self->nRows++;
+
+		const char* sQuery = PyUnicode_AsUTF8(self->pyQuery);
+		if (pyParameters)
+			pyResult = PyObject_CallMethod(self->pyCursor, "execute", "(sO)", sQuery, pyParameters);
+		else
+			pyResult = PyObject_CallMethod(self->pyCursor, "execute", "(s)", sQuery);
+		if (pyResult == NULL) {
+			return NULL;
+		}
+
+		PyObject* pyColumnDescriptions = PyObject_GetAttrString(self->pyCursor, "description");
+		PyObject* pyIterator = PyObject_GetIter(pyColumnDescriptions);
+		PyObject* pyItem, *pyColumnName, *pyColumn, *pyIndex;
+		Py_ssize_t nIndex = 0;
+		if (pyIterator == NULL) {
+			return NULL;
+		}
+		// make my columns' index numbers point to correct position in query result tuples
+		while (pyItem = PyIter_Next(pyIterator)) {
+			pyColumnName = PyTuple_GetItem(pyItem, 0);
+			if (pyColumnName == NULL)
+				return NULL;
+
+			pyColumn = PyDict_GetItem(self->pyColumns, pyColumnName);
+			if (pyColumn != NULL) {
+				pyIndex = PyStructSequence_GetItem(pyColumn, PXDYNASETCOLUMN_INDEX);
+				Py_DECREF(pyIndex);
+				PyStructSequence_SetItem(pyColumn, PXDYNASETCOLUMN_INDEX, PyLong_FromSsize_t(nIndex));
+			}
+			else {
+				return PyErr_Format(PyExc_AttributeError, "Column '%s' of query not contained in Dynaset's column list.", PyUnicode_AsUTF8(pyColumnName));
+			}
+			nIndex++;
+			Py_DECREF(pyItem);
+		}
+		Py_DECREF(pyIterator);
+
+		// create Dynaset rows and reference to query result tuples
+		PyObject* pyRow = NULL;
+		self->nRows = 0;
+		while (pyItem = PyIter_Next(pyResult)) {
+			//Py_INCREF(pyItem); // ??
+			Py_INCREF(Py_None);
+			Py_INCREF(Py_False);
+			Py_INCREF(Py_False);
+			pyRow = PyStructSequence_New(&PxDynasetRowType);
+			PyStructSequence_SetItem(pyRow, PXDYNASETROW_DATA, pyItem);
+			PyStructSequence_SetItem(pyRow, PXDYNASETROW_DATAOLD, Py_None);
+			PyStructSequence_SetItem(pyRow, PXDYNASETROW_NEW, Py_False);
+			PyStructSequence_SetItem(pyRow, PXDYNASETROW_DELETE, Py_False);
+
+			if (PyList_Append(self->pyRows, pyRow) == -1) {
+				return NULL;
+			}
+			Py_DECREF(pyRow);
+			self->nRows++;
+		}
+		Py_DECREF(pyResult);
+		Py_DECREF(pyColumnDescriptions);
 	}
-	Py_DECREF(pyResult);
-	Py_DECREF(pyColumnDescriptions);
+	else if (hl.pyClientType && PyObject_TypeCheck(self->pyConnection, hl.pyClientType)) {
+		// Hinterland connection
+
+		hl.pyMsg = PyDict_New();
+		PyDict_SetItem(hl.pyMsg, hl.Msg_Type, hl.Msg_Get);
+		PyDict_SetItemString(hl.pyMsg, "Entity", self->pyTable);
+		PyDict_SetItemString(hl.pyMsg, "Parameters", pyParameters);
+
+		if (!Hinterland_Exchange(self->pyConnection)) {
+			return PyErr_Format(PyExc_RuntimeError, "Hinterland communication error: `%s`.", hl.sStatusMessage);
+		}
+
+		// make my columns' index numbers point to correct position in result set
+		PyObject* pyColumnName, *pyColumn, *pyColumns = PyDict_GetItemString(hl.pyResultMsg, "Columns");
+		Py_ssize_t n, nLen = PyTuple_Size(pyColumns);
+	    for (n = 0; n < nLen; n++) {
+	        pyColumnName = PyTuple_GET_ITEM(pyColumns, n);
+			pyColumn = PyDict_GetItem(self->pyColumns, pyColumnName);
+			if (pyColumn != NULL) {
+				//pyIndex = PyStructSequence_GetItem(pyColumn, PXDYNASETCOLUMN_INDEX);
+				//Py_DECREF(pyIndex);
+				PyStructSequence_SetItem(pyColumn, PXDYNASETCOLUMN_INDEX, PyLong_FromSsize_t(n));
+			}
+			else {
+				return PyErr_Format(PyExc_AttributeError, "Column '%s' of data received not contained in Dynaset's column list.", PyUnicode_AsUTF8(pyColumnName));
+			}
+		}
+
+		// create Dynaset rows and reference to received data tuples
+		PyObject* pyRow, *pyDataRow, *pyRows = PyDict_GetItemString(hl.pyResultMsg, "Data");
+		nLen = PyTuple_Size(pyRows);
+	    for (n = 0; n < nLen; n++) {
+	        pyDataRow = PyTuple_GET_ITEM(pyRows, n);
+			Py_INCREF(Py_None);
+			Py_INCREF(Py_False);
+			Py_INCREF(Py_False);
+			pyRow = PyStructSequence_New(&PxDynasetRowType);
+			PyStructSequence_SetItem(pyRow, PXDYNASETROW_DATA, pyDataRow);
+			PyStructSequence_SetItem(pyRow, PXDYNASETROW_DATAOLD, Py_None);
+			PyStructSequence_SetItem(pyRow, PXDYNASETROW_NEW, Py_False);
+			PyStructSequence_SetItem(pyRow, PXDYNASETROW_DELETE, Py_False);
+
+			if (PyList_Append(self->pyRows, pyRow) == -1) {
+				return NULL;
+			}
+		}
+		self->nRows += nLen;
+	}
+	else {
+		PyErr_SetString(PyExc_RuntimeError, "No usable connection");
+		return NULL;
+	}
+
 	if (self->pyParent)
 		Py_XDECREF(pyParameters);
 
@@ -679,7 +734,6 @@ PxDynaset_GetRowDataDict(PxDynasetObject* self, Py_ssize_t nRow, bool bKeysOnly)
 		nColumn = PyLong_AsSsize_t(PyStructSequence_GetItem(pyColumn, PXDYNASETCOLUMN_INDEX));
 		pyIsKey = PyStructSequence_GetItem(pyColumn, PXDYNASETCOLUMN_KEY);
 		pyData = PyTuple_GetItem(pyRowData, nColumn);
-		//XX(pyData);
 		if (!bKeysOnly || pyIsKey == Py_True)
 			if (PyDict_SetItem(pyRowDataDict, pyColumnName, pyData) == -1) // PyDict_SetItem increfs...
 				return NULL;
@@ -873,7 +927,6 @@ PxDynaset_Write(PxDynasetObject* self)
 			memset(sSql2 + strlen(sSql2) - 1, '\0', 1);
 			sSql = StringAppend2(sSql, sSql2, ");");
 
-			//XX(pyParams);
 			pyCursor = PyObject_CallMethod(self->pyConnection, "execute", "(sO)", sSql, PyList_AsTuple(pyParams));
 			if (pyCursor == NULL) {
 				PyErr_Print();
@@ -1100,7 +1153,6 @@ PxDynaset_NewRow(PxDynasetObject* self, Py_ssize_t nRow)
 					if (pyData == NULL) {
 						return false;
 					}
-					//Xx("Parent data", pyData);
 				}
 				else {
 					// if it got a default value, use that
@@ -1871,7 +1923,7 @@ static PyMemberDef PxDynaset_members[] = {
 	{ "autoExecute", T_BOOL, offsetof(PxDynasetObject, bAutoExecute), 0, "Execute query if parent row has changed." },
 	{ "readOnly", T_BOOL, offsetof(PxDynasetObject, bReadOnly), 0, "Data can not be edited." },
 	{ "whoCols", T_BOOL, offsetof(PxDynasetObject, bHasWhoCols), 0, "The table has columns ModDate and ModUser."  },
-	{ "connecion", T_OBJECT, offsetof(PxDynasetObject, pyConnection), 0, "Database connection" },
+	{ "connection", T_OBJECT, offsetof(PxDynasetObject, pyConnection), 0, "Database connection" },
 	{ NULL }
 };
 

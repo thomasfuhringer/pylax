@@ -3,7 +3,7 @@
 
 // in main.c
 PyObject* Pylax_message(PyObject* self, PyObject* args);
-PyObject* Pylax_ask(PyObject *self, PyObject *args, PyObject *kwds);
+//PyObject* Pylax_ask(PyObject *self, PyObject *args, PyObject *kwds);
 PyObject* Pylax_status_message(PyObject* self, PyObject* args);
 PyObject* Pylax_set_icon(PyObject *self, PyObject *args);
 PyObject* Pylax_append_menu_item(PyObject *self, PyObject *args);
@@ -13,8 +13,7 @@ PyObject* Pylax_set_before_close(PyObject *self, PyObject *args);
 static PyMethodDef PylaxMethods[] = {
 	{ "message", Pylax_message, METH_VARARGS, "Show message box." },
 	{ "status_message", Pylax_status_message, METH_VARARGS, "Show message in the status bar." },
-	{ "append_menu_item", Pylax_append_menu_item, METH_VARARGS, "Add an item to menu 'App'." },
-	/*{ "ask", Pylax_ask, METH_VARARGS | METH_KEYWORDS, "Show message box." },
+	{ "append_menu_item", Pylax_append_menu_item, METH_VARARGS, "Add an item to menu 'App'." },/*
 	{ "set_before_close", Pylax_set_before_close, METH_VARARGS, "Set before close callback." },*/
 	{ NULL, NULL, 0, NULL }
 };
@@ -55,7 +54,7 @@ PyInit_pylax(void)
 	PxFormType.tp_base = &PxWindowType;
 	if (PyType_Ready(&PxFormType) < 0)
 		return NULL;
-        
+
 	PxLabelType.tp_base = &PxWidgetType;
 	if (PyType_Ready(&PxLabelType) < 0)
 		return NULL;
