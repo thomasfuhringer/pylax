@@ -206,7 +206,7 @@ GtkAppActivateEventCB(GtkApplication* app, gpointer gUserData)
 	//-------------------------------------
 	//OpenApp("/media/tfu/OTG/Pylax/Apps/Southwind.pxa/Southwind.px");
 	//OpenApp("/media/tfu/OTG/Pylax/Apps/Test.pxa/Test.px");
-	OpenApp("/media/tfu/OTG/Pylax/Apps/Hinterland.pxa/HinterlandTest.px");
+	//OpenApp("/media/tfu/OTG/Pylax/Apps/Hinterland.pxa/HinterlandTest.px");
 	//OpenApp("/media/tfu/OTG/Pylax/GTK/Test.px");
 }
 
