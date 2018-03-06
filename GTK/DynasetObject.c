@@ -650,8 +650,8 @@ PxDynaset_execute(PxDynasetObject* self, PyObject* args, PyObject* kwds)
 		// make my columns' index numbers point to correct position in result set
 		PyObject* pyColumnName, *pyColumn, *pyColumns = PyDict_GetItemString(hl.pyResultMsg, "Columns");
 		Py_ssize_t n, nLen = PyTuple_Size(pyColumns);
-	    for (n = 0; n < nLen; n++) {
-	        pyColumnName = PyTuple_GET_ITEM(pyColumns, n);
+		for (n = 0; n < nLen; n++) {
+			pyColumnName = PyTuple_GET_ITEM(pyColumns, n);
 			pyColumn = PyDict_GetItem(self->pyColumns, pyColumnName);
 			if (pyColumn != NULL) {
 				//pyIndex = PyStructSequence_GetItem(pyColumn, PXDYNASETCOLUMN_INDEX);
@@ -666,8 +666,8 @@ PxDynaset_execute(PxDynasetObject* self, PyObject* args, PyObject* kwds)
 		// create Dynaset rows and reference to received data tuples
 		PyObject* pyRow, *pyDataRow, *pyRows = PyDict_GetItemString(hl.pyResultMsg, "Data");
 		nLen = PyTuple_Size(pyRows);
-	    for (n = 0; n < nLen; n++) {
-	        pyDataRow = PyTuple_GET_ITEM(pyRows, n);
+		for (n = 0; n < nLen; n++) {
+			pyDataRow = PyTuple_GET_ITEM(pyRows, n);
 			Py_INCREF(Py_None);
 			Py_INCREF(Py_False);
 			Py_INCREF(Py_False);
@@ -817,7 +817,9 @@ PxDynaset_Save(PxDynasetObject* self)
 static int
 PxDynaset_Write(PxDynasetObject* self)
 {
-	PyObject* pyResult, *pyColumnName, *pyColumn, *pyRow, *pyRowData, *pyRowDataOld, *pyRowDelete, *pyRowNew, *pyData, *pyIsKey, *pyParams, *pyCursor, *pyLastRowID, *tmp;
+	PyObject* pyResult, *pyColumnName, *pyColumn, *pyRow, *pyRowData, *pyRowDataOld,
+		*pyRowDelete, *pyRowNew, *pyData, *pyIsKey, *pyParams, *pyCursor, *pyLastRowID,
+		*pyParameters, *pyMsgData, *tmp;
 	Py_ssize_t nRow, nColumn, nPos;
 	int iRecordsChanged = 0;
 	int iChildRecordsChanged = 0;
@@ -838,8 +840,8 @@ PxDynaset_Write(PxDynasetObject* self)
 		nPos = 0;
 
 		// DELETE
-		if (pyRowDelete == Py_True) {
-			if (pyRowNew == Py_False) {
+		if (pyRowDelete == Py_True && pyRowNew == Py_False) {
+			if (PyObject_TypeCheck(self->pyConnection, g.pySQLiteConnectionType)) {
 				char* sArr[3] = { "DELETE FROM ", PyUnicode_AsUTF8(self->pyTable), " WHERE " };
 				sSql = StringArrayCat(sArr, 3);
 
@@ -881,159 +883,265 @@ PxDynaset_Write(PxDynasetObject* self)
 
 				Py_XDECREF(self->pyParams);
 				self->pyParams = pyParams;
+			}
+			else if (hl.pyClientType && PyObject_TypeCheck(self->pyConnection, hl.pyClientType)) {
+				// Hinterland connection
 
+				hl.pyMsg = PyDict_New();
+				PyDict_SetItem(hl.pyMsg, hl.Msg_Type, hl.Msg_Delete);
+				PyDict_SetItemString(hl.pyMsg, "Entity", self->pyTable);
+				pyParameters = PyDict_New();
+
+				while (PyDict_Next(self->pyColumns, &nPos, &pyColumnName, &pyColumn)) {
+					if (PyErr_Occurred()) {
+						PyErr_Print();
+						return -1;
+					}
+					nColumn = PyLong_AsSsize_t(PyStructSequence_GetItem(pyColumn, PXDYNASETCOLUMN_INDEX));
+					pyIsKey = PyStructSequence_GetItem(pyColumn, PXDYNASETCOLUMN_KEY);
+					pyData = PyTuple_GetItem(pyRowData, nColumn);
+					if (pyIsKey == Py_True) {
+						if (PyDict_SetItem(pyParameters, pyColumnName, pyData) == -1)
+							return -1;
+					}
+				}
+
+				PyDict_SetItemString(hl.pyMsg, "Parameters", pyParameters);
+
+				if (!Hinterland_Exchange(self->pyConnection)) {
+					return PyErr_Format(PyExc_RuntimeError, "Hinterland communication error: `%s`.", hl.sStatusMessage);
+				}
+				Py_XDECREF(pyParams);
+			}
+			else {
+				PyErr_SetString(PyExc_RuntimeError, "No usable connection");
+				return -1;
 			}
 		}
 		// INSERT
 		else if (pyRowNew == Py_True) {
 			//g_debug("INSERT");
-			char* sArr[3] = { "INSERT INTO ", PyUnicode_AsUTF8(self->pyTable), " (" };
-			sSql = StringArrayCat(sArr, 3);
-			sSql2 = StringAppend(NULL, ") VALUES (");
+			if (PyObject_TypeCheck(self->pyConnection, g.pySQLiteConnectionType)) {
+				char* sArr[3] = { "INSERT INTO ", PyUnicode_AsUTF8(self->pyTable), " (" };
+				sSql = StringArrayCat(sArr, 3);
+				sSql2 = StringAppend(NULL, ") VALUES (");
 
-			while (PyDict_Next(self->pyColumns, &nPos, &pyColumnName, &pyColumn)) {
-				if (PyErr_Occurred()) {
-					PyErr_Print();
+				while (PyDict_Next(self->pyColumns, &nPos, &pyColumnName, &pyColumn)) {
+					if (PyErr_Occurred()) {
+						PyErr_Print();
+						return -1;
+					}
+					nColumn = PyLong_AsSsize_t(PyStructSequence_GetItem(pyColumn, PXDYNASETCOLUMN_INDEX));
+					pyIsKey = PyStructSequence_GetItem(pyColumn, PXDYNASETCOLUMN_KEY);
+					pyData = PyTuple_GetItem(pyRowData, nColumn);
+
+					if (pyIsKey != Py_None && self->pyAutoColumn != pyColumn) {
+						sSql = StringAppend2(sSql, PyUnicode_AsUTF8(pyColumnName), ",");
+						sSql2 = StringAppend(sSql2, "?,");
+						if (PyList_Append(pyParams, pyData) == -1) {
+							return -1;
+						}
+					}
+					//Py_DECREF(pyData);
+				}
+
+				if (PySequence_Size(pyParams) == 0) {
+					PyErr_SetString(PyExc_RuntimeError, "No columns.");
 					return -1;
 				}
-				nColumn = PyLong_AsSsize_t(PyStructSequence_GetItem(pyColumn, PXDYNASETCOLUMN_INDEX));
-				pyIsKey = PyStructSequence_GetItem(pyColumn, PXDYNASETCOLUMN_KEY);
-				pyData = PyTuple_GetItem(pyRowData, nColumn);
 
-				if (pyIsKey != Py_None && self->pyAutoColumn != pyColumn) {
-					sSql = StringAppend2(sSql, PyUnicode_AsUTF8(pyColumnName), ",");
-					sSql2 = StringAppend(sSql2, "?,");
-					if (PyList_Append(pyParams, pyData) == -1) {
+				if (self->bHasWhoCols) {
+					sSql = StringAppend(sSql, "ModDate,ModUser,");
+					sSql2 = StringAppend(sSql2, "CURRENT_TIMESTAMP,?,");
+					if (PyList_Append(pyParams, PyLong_FromLong(g.iCurrentUser)) == -1) {
 						return -1;
 					}
 				}
-				//Py_DECREF(pyData);
-			}
 
-			if (PySequence_Size(pyParams) == 0) {
-				PyErr_SetString(PyExc_RuntimeError, "No columns.");
-				return -1;
-			}
+				memset(sSql + strlen(sSql) - 1, '\0', 1); // cut off final comma
+				memset(sSql2 + strlen(sSql2) - 1, '\0', 1);
+				sSql = StringAppend2(sSql, sSql2, ");");
 
-			if (self->bHasWhoCols) {
-				sSql = StringAppend(sSql, "ModDate,ModUser,");
-				sSql2 = StringAppend(sSql2, "CURRENT_TIMESTAMP,?,");
-				if (PyList_Append(pyParams, PyLong_FromLong(g.iCurrentUser)) == -1) {
-					return -1;
-				}
-			}
-
-			memset(sSql + strlen(sSql) - 1, '\0', 1); // cut off final comma
-			memset(sSql2 + strlen(sSql2) - 1, '\0', 1);
-			sSql = StringAppend2(sSql, sSql2, ");");
-
-			pyCursor = PyObject_CallMethod(self->pyConnection, "execute", "(sO)", sSql, PyList_AsTuple(pyParams));
-			if (pyCursor == NULL) {
-				PyErr_Print();
-				return -1;
-			}
-
-			if (self->pyAutoColumn) {
-				pyLastRowID = PyObject_GetAttrString(pyCursor, "lastrowid");
-				if (pyLastRowID == NULL) {
+				pyCursor = PyObject_CallMethod(self->pyConnection, "execute", "(sO)", sSql, PyList_AsTuple(pyParams));
+				if (pyCursor == NULL) {
 					PyErr_Print();
 					return -1;
 				}
-				if (pyLastRowID == Py_None) {
-					self->iLastRowID = -1;
-					Py_XDECREF(pyLastRowID);
+
+				if (self->pyAutoColumn) {
+					pyLastRowID = PyObject_GetAttrString(pyCursor, "lastrowid");
+					if (pyLastRowID == NULL) {
+						PyErr_Print();
+						return -1;
+					}
+					if (pyLastRowID == Py_None) {
+						self->iLastRowID = -1;
+						Py_XDECREF(pyLastRowID);
+					}
+					else {
+						nColumn = PyLong_AsSsize_t(PyStructSequence_GetItem(self->pyAutoColumn, PXDYNASETCOLUMN_INDEX));
+						tmp = PyTuple_GetItem(pyRowData, nColumn);
+						PyTuple_SET_ITEM(pyRowData, nColumn, pyLastRowID);
+						self->iLastRowID = PyLong_AsLong(pyLastRowID);
+						Py_XDECREF(tmp);
+						PxDynaset_UpdateAutoColumnInChildren(self, self->pyAutoColumn, pyLastRowID);
+					}
 				}
-				else {
-					nColumn = PyLong_AsSsize_t(PyStructSequence_GetItem(self->pyAutoColumn, PXDYNASETCOLUMN_INDEX));
-					tmp = PyTuple_GetItem(pyRowData, nColumn);
-					PyTuple_SET_ITEM(pyRowData, nColumn, pyLastRowID);
-					self->iLastRowID = PyLong_AsLong(pyLastRowID);
-					Py_XDECREF(tmp);
-					PxDynaset_UpdateAutoColumnInChildren(self, self->pyAutoColumn, pyLastRowID);
-				}
+
+				iRecordsChanged++;
+				Py_DECREF(pyCursor);
+
+				if (self->sInsertSQL)
+					PyMem_RawFree(self->sInsertSQL);
+				self->sInsertSQL = sSql;
+				PyMem_RawFree(sSql2);
+
+				Py_XDECREF(self->pyParams);
+				self->pyParams = pyParams;
+				Py_DECREF(pyRowNew); // Py_True
+				//PyStructSequence_SetItem(pyRow, PXDYNASETROW_NEW, Py_False);
 			}
+			else if (hl.pyClientType && PyObject_TypeCheck(self->pyConnection, hl.pyClientType)) {
+				// Hinterland connection
 
-			iRecordsChanged++;
-			Py_DECREF(pyCursor);
+				hl.pyMsg = PyDict_New();
+				PyDict_SetItem(hl.pyMsg, hl.Msg_Type, hl.Msg_Set);
+				PyDict_SetItemString(hl.pyMsg, "Entity", self->pyTable);
+				pyMsgData = PyDict_New();
 
-			if (self->sInsertSQL)
-				PyMem_RawFree(self->sInsertSQL);
-			self->sInsertSQL = sSql;
-			PyMem_RawFree(sSql2);
+				while (PyDict_Next(self->pyColumns, &nPos, &pyColumnName, &pyColumn)) {
+					if (PyErr_Occurred()) {
+						PyErr_Print();
+						return -1;
+					}
+					nColumn = PyLong_AsSsize_t(PyStructSequence_GetItem(pyColumn, PXDYNASETCOLUMN_INDEX));
+					pyData = PyTuple_GetItem(pyRowData, nColumn);
+					if (PyDict_SetItem(pyMsgData, pyColumnName, pyData) == -1)
+						return -1;
+				}
 
-			Py_XDECREF(self->pyParams);
-			self->pyParams = pyParams;
-			Py_DECREF(pyRowNew); // Py_True
-			//PyStructSequence_SetItem(pyRow, PXDYNASETROW_NEW, Py_False);
+				PyDict_SetItemString(hl.pyMsg, "Data", pyMsgData);
+
+				if (!Hinterland_Exchange(self->pyConnection)) {
+					return PyErr_Format(PyExc_RuntimeError, "Hinterland communication error: `%s`.", hl.sStatusMessage);
+				}
+				Py_XDECREF(pyMsgData);
+			}
+			else {
+				PyErr_SetString(PyExc_RuntimeError, "No usable connection");
+				return -1;
+			}
 		}
 		// UPDATE
 		else if (pyRowDataOld != Py_None) {
-			sSql = StringAppend(NULL, "UPDATE ");  // allocate on heap
-			sSql = StringAppend2(sSql, PyUnicode_AsUTF8(self->pyTable), " SET ");
-			sSql2 = StringAppend(NULL, " WHERE ");
-			PyObject* pyParams2 = PyList_New(0);
-			PyObject* pyParams1 = pyParams;
+			if (PyObject_TypeCheck(self->pyConnection, g.pySQLiteConnectionType)) {
+				sSql = StringAppend(NULL, "UPDATE ");  // allocate on heap
+				sSql = StringAppend2(sSql, PyUnicode_AsUTF8(self->pyTable), " SET ");
+				sSql2 = StringAppend(NULL, " WHERE ");
+				PyObject* pyParams2 = PyList_New(0);
+				PyObject* pyParams1 = pyParams;
 
-			while (PyDict_Next(self->pyColumns, &nPos, &pyColumnName, &pyColumn)) {
-				if (PyErr_Occurred()) {
-					PyErr_Print();
+				while (PyDict_Next(self->pyColumns, &nPos, &pyColumnName, &pyColumn)) {
+					if (PyErr_Occurred()) {
+						PyErr_Print();
+						return -1;
+					}
+					nColumn = PyLong_AsSsize_t(PyStructSequence_GetItem(pyColumn, PXDYNASETCOLUMN_INDEX));
+					pyIsKey = PyStructSequence_GetItem(pyColumn, PXDYNASETCOLUMN_KEY);
+					pyData = PyTuple_GetItem(pyRowData, nColumn);
+					if (pyIsKey == Py_False) {
+						sSql = StringAppend2(sSql, PyUnicode_AsUTF8(pyColumnName), "=?,");
+						if (PyList_Append(pyParams1, pyData) == -1) {
+							return -1;
+						}
+					}
+					else if (pyIsKey == Py_True) {
+						sSql2 = StringAppend2(sSql2, PyUnicode_AsUTF8(pyColumnName), "=? AND ");
+						if (PyList_Append(pyParams2, pyData) == -1) {
+							return -1;
+						}
+					}
+				}
+
+				if (PySequence_Size(pyParams2) == 0) {
+					PyErr_SetString(PyExc_RuntimeError, "No key columns given. Cannot update.");
 					return -1;
 				}
-				nColumn = PyLong_AsSsize_t(PyStructSequence_GetItem(pyColumn, PXDYNASETCOLUMN_INDEX));
-				pyIsKey = PyStructSequence_GetItem(pyColumn, PXDYNASETCOLUMN_KEY);
-				pyData = PyTuple_GetItem(pyRowData, nColumn);
-				if (pyIsKey == Py_False) {
-					sSql = StringAppend2(sSql, PyUnicode_AsUTF8(pyColumnName), "=?,");
-					if (PyList_Append(pyParams1, pyData) == -1) {
+
+				if (self->bHasWhoCols) {
+					sSql = StringAppend(sSql, "ModDate=CURRENT_TIMESTAMP,ModUser=?,");
+					if (PyList_Append(pyParams1, PyLong_FromLong(g.iCurrentUser)) == -1) {
 						return -1;
 					}
 				}
-				else if (pyIsKey == Py_True) {
-					sSql2 = StringAppend2(sSql2, PyUnicode_AsUTF8(pyColumnName), "=? AND ");
-					if (PyList_Append(pyParams2, pyData) == -1) {
-						return -1;
-					}
-				}
-			}
 
-			if (PySequence_Size(pyParams2) == 0) {
-				PyErr_SetString(PyExc_RuntimeError, "No key columns given. Cannot update.");
-				return -1;
-			}
+				if ((pyParams = PySequence_Concat(pyParams1, pyParams2)) == NULL)
+					return -1;
+				Py_XDECREF(pyParams1);
+				Py_XDECREF(pyParams2);
 
-			if (self->bHasWhoCols) {
-				sSql = StringAppend(sSql, "ModDate=CURRENT_TIMESTAMP,ModUser=?,");
-				if (PyList_Append(pyParams1, PyLong_FromLong(g.iCurrentUser)) == -1) {
+				memset(sSql + strlen(sSql) - 1, '\0', 1); // cut off final comma
+				memset(sSql2 + strlen(sSql2) - 5, '\0', 1); // cut off final ' AND '
+				sSql = StringAppend2(sSql, sSql2, ";");
+
+				pyCursor = PyObject_CallMethod(self->pyConnection, "execute", "(sO)", sSql, PyList_AsTuple(pyParams));
+				PyErr_Print();
+				if (pyCursor == NULL) {
 					return -1;
 				}
+				iRecordsChanged++;
+
+				Py_DECREF(pyCursor);
+
+				if (self->sUpdateSQL)
+					PyMem_RawFree(self->sUpdateSQL);
+				self->sUpdateSQL = sSql;
+				PyMem_RawFree(sSql2);
+
+				Py_XDECREF(self->pyParams);
+				self->pyParams = pyParams;
+				Py_DECREF(pyRowDataOld);
 			}
+			else if (hl.pyClientType && PyObject_TypeCheck(self->pyConnection, hl.pyClientType)) {
+				// Hinterland connection
 
-			if ((pyParams = PySequence_Concat(pyParams1, pyParams2)) == NULL)
-				return -1;
-			Py_XDECREF(pyParams1);
-			Py_XDECREF(pyParams2);
+				hl.pyMsg = PyDict_New();
+				PyDict_SetItem(hl.pyMsg, hl.Msg_Type, hl.Msg_Delete);
+				PyDict_SetItemString(hl.pyMsg, "Entity", self->pyTable);
+				pyParameters = PyDict_New();
+				pyMsgData = PyDict_New();
 
-			memset(sSql + strlen(sSql) - 1, '\0', 1); // cut off final comma
-			memset(sSql2 + strlen(sSql2) - 5, '\0', 1); // cut off final ' AND '
-			sSql = StringAppend2(sSql, sSql2, ";");
+				while (PyDict_Next(self->pyColumns, &nPos, &pyColumnName, &pyColumn)) {
+					if (PyErr_Occurred()) {
+						PyErr_Print();
+						return -1;
+					}
+					nColumn = PyLong_AsSsize_t(PyStructSequence_GetItem(pyColumn, PXDYNASETCOLUMN_INDEX));
+					pyIsKey = PyStructSequence_GetItem(pyColumn, PXDYNASETCOLUMN_KEY);
+					pyData = PyTuple_GetItem(pyRowData, nColumn);
+					if (pyIsKey == Py_True) {
+						if (PyDict_SetItem(pyParameters, pyColumnName, pyData) == -1)
+							return -1;
+					}
+					else {
+						if (PyDict_SetItem(pyMsgData, pyColumnName, pyData) == -1)
+							return -1;
+					}
+				}
 
-			pyCursor = PyObject_CallMethod(self->pyConnection, "execute", "(sO)", sSql, PyList_AsTuple(pyParams));
-			PyErr_Print();
-			if (pyCursor == NULL) {
+				PyDict_SetItemString(hl.pyMsg, "Parameters", pyParameters);
+				PyDict_SetItemString(hl.pyMsg, "Data", pyMsgData);
+
+				if (!Hinterland_Exchange(self->pyConnection)) {
+					return PyErr_Format(PyExc_RuntimeError, "Hinterland communication error: `%s`.", hl.sStatusMessage);
+				}
+				Py_XDECREF(pyParameters);
+				Py_XDECREF(pyMsgData);
+			}
+			else {
+				PyErr_SetString(PyExc_RuntimeError, "No usable connection");
 				return -1;
 			}
-			iRecordsChanged++;
-
-			Py_DECREF(pyCursor);
-
-			if (self->sUpdateSQL)
-				PyMem_RawFree(self->sUpdateSQL);
-			self->sUpdateSQL = sSql;
-			PyMem_RawFree(sSql2);
-
-			Py_XDECREF(self->pyParams);
-			self->pyParams = pyParams;
-			Py_DECREF(pyRowDataOld);
 		}
 		Py_XDECREF(pyParams);
 	}

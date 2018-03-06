@@ -9,6 +9,8 @@ Hinterland_Init()
 	hl.MsgClass = NULL;
 	hl.Msg_Type = NULL;
 	hl.Msg_Get = NULL;
+	hl.Msg_Set = NULL;
+	hl.Msg_Delete = NULL;
 
 	PyObject* pyModuleDict = PyImport_GetModuleDict();
 	// check if script imported Hinterland and obtain pointer to class 'Client'
@@ -23,6 +25,8 @@ Hinterland_Init()
 		hl.MsgClass = PyObject_GetAttrString(hl.pyModule, "Msg");
 		hl.Msg_Type = PyObject_GetAttrString(hl.MsgClass, "Type");
 		hl.Msg_Get = PyObject_GetAttrString(hl.MsgClass, "Get");
+		hl.Msg_Set = PyObject_GetAttrString(hl.MsgClass, "Set");
+		hl.Msg_Delete = PyObject_GetAttrString(hl.MsgClass, "Delete");
 	}
 	return true;
 }
@@ -33,7 +37,6 @@ Hinterland_Exchange(PyObject* pyConnection)
 	PyObject* pyResult;
 	if ((pyResult = PyObject_CallMethod(pyConnection, "exchange", "(O)", hl.pyMsg)) == NULL) {
 		g_debug("Session_Exchange failed");
-		//PythonErrorDialog("Can not exchange message.");
 		PyErr_Print();
 		return false;
 	}

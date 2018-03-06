@@ -10,6 +10,8 @@ typedef struct _PxHinterlandGlobals
 	PyObject* MsgClass;
 	PyObject* Msg_Type;
 	PyObject* Msg_Get;
+	PyObject* Msg_Set;
+	PyObject* Msg_Delete;
 	char* sStatusMessage;
 }
 PxHinterlandGlobals;

@@ -32,7 +32,7 @@ script file named `main.py` in the same directory.
 A larger app might have several Python files but one needs to be
 named `main.py`.
 
-Let us look what Hello World does::
+Let us look what `Hello World` does::
 
     import pylax
 

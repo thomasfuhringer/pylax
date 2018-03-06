@@ -1,5 +1,5 @@
 # hinterland.py  | Hinterland communication server
-# © 2017 by Thomas Führinger, made available under the terms of the GPL
+# © 2017 - 2018 by Thomas Führinger, made available under the terms of the GPL
 # github.com/thomasfuhringer/pylax/hinterland
 # For encrypted communication the library PyNaCl needs to be installed.
 
@@ -13,7 +13,7 @@ if nacl_available:
     import nacl, nacl.utils
     from nacl.public import PrivateKey, PublicKey, Box
 
-version_info = (0, 1, 0)
+version_info = (0, 1, 1)
 default_port = 1550
 script_path = os.path.dirname(os.path.realpath(__file__)) + "/"
 
@@ -21,12 +21,12 @@ class Msg:
     Type, Connect, Disconnect, Error, Shutdown, \
     Success, Invalid, Decline, NotFound, NotAuthorized, \
     Key, SignOn, LogIn, Logout, ChangePassword, \
-    Get, Data, \
+    Get, Set, Delete, Data, \
     SearchPerson, GetPerson, DeletePerson, \
     SetPage, GetPageChildren, SearchPage, GetPage, DeletePage, \
     SetOrg, GetOrgChildren, SearchOrg, GetOrg, DeleteOrg, \
     SetRole, GetRoles, DeleteRole, \
-    SendMessage, GetMessageList, GetMessage, MessageRead = range(37)
+    SendMessage, GetMessageList, GetMessage, MessageRead = range(39)
 
 class LogLevel:
     Debug, Info, Warning, Error, Critical = (10, 20, 30, 40, 50)
@@ -181,6 +181,10 @@ class Session(threading.Thread):
 
                     elif self.msg[Msg.Type] == Msg.Get:
                         self.get()
+                    elif self.msg[Msg.Type] == Msg.Set:
+                        self.set()
+                    elif self.msg[Msg.Type] == Msg.Delete:
+                        self.delete()
 
                     elif self.msg[Msg.Type] == Msg.Shutdown:
                         self.shutdown()
@@ -381,6 +385,14 @@ class Session(threading.Thread):
             self.send({Msg.Type: Msg.Success, "Data": version_info})
         else:
             self.send({Msg.Type: Msg.Decline, "Text": "Invalid entity"})
+
+    def set(self):
+        self.log(LogLevel.Info, "Set|" + self.msg["Entity"])
+        self.send({Msg.Type: Msg.Decline, "Text": "Invalid entity"})
+
+    def delete(self):
+        self.log(LogLevel.Info, "Set|" + self.msg["Entity"])
+        self.send({Msg.Type: Msg.Decline, "Text": "Invalid entity"})
 
     def search_person(self):
         self.log(LogLevel.Info, "SearchPerson")
