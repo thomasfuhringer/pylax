@@ -24,12 +24,12 @@ class MySession(hl.Session):
             try:
                 if "Parameters" in self.msg:
                     self.cursor.execute("UPDATE Item SET Name=:Name, Description=:Description  WHERE ItemID = :ItemID;", {**self.msg["Parameters"], **self.msg["Data"]})
-                    self.cnx.commit()
+                    #self.cnx.commit()
                     self.send({hl.Msg.Type: hl.Msg.Success})
                 else:
                     self.cursor.execute("INSERT INTO Item (Name, Description) VALUES (:Name, :Description);", self.msg["Data"])
                     id = self.cursor.lastrowid
-                    self.cnx.commit()
+                    #self.cnx.commit()
                     self.send({hl.Msg.Type: hl.Msg.Success, "ItemID": id})
                     
             except sqlite3.Error as error:
@@ -42,7 +42,7 @@ class MySession(hl.Session):
         if self.msg["Entity"] == "Item":
             try:
                 self.cursor.execute("DELETE FROM Item WHERE ItemID = :ItemID;", self.msg["Parameters"])
-                self.cnx.commit()
+                #self.cnx.commit()
                 self.send({hl.Msg.Type: hl.Msg.Success})
             except sqlite3.Error as error:
                 self.cnx.rollback()

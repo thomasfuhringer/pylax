@@ -21,12 +21,12 @@ class Msg:
     Type, Connect, Disconnect, Error, Shutdown, \
     Success, Invalid, Decline, NotFound, NotAuthorized, \
     Key, SignOn, LogIn, Logout, ChangePassword, \
-    Get, Set, Delete, Data, \
+    Get, Set, Delete, Data, Commit, RollBack, \
     SearchPerson, GetPerson, DeletePerson, \
     SetPage, GetPageChildren, SearchPage, GetPage, DeletePage, \
     SetOrg, GetOrgChildren, SearchOrg, GetOrg, DeleteOrg, \
     SetRole, GetRoles, DeleteRole, \
-    SendMessage, GetMessageList, GetMessage, MessageRead = range(39)
+    SendMessage, GetMessageList, GetMessage, MessageRead = range(41)
 
 class LogLevel:
     Debug, Info, Warning, Error, Critical = (10, 20, 30, 40, 50)
@@ -185,6 +185,10 @@ class Session(threading.Thread):
                         self.set()
                     elif self.msg[Msg.Type] == Msg.Delete:
                         self.delete()
+                    elif self.msg[Msg.Type] == Msg.Commit:
+                        self.commit()
+                    elif self.msg[Msg.Type] == Msg.RollBack:
+                        self.rollback()
 
                     elif self.msg[Msg.Type] == Msg.Shutdown:
                         self.shutdown()
@@ -391,8 +395,18 @@ class Session(threading.Thread):
         self.send({Msg.Type: Msg.Decline, "Text": "Invalid entity"})
 
     def delete(self):
-        self.log(LogLevel.Info, "Set|" + self.msg["Entity"])
+        self.log(LogLevel.Info, "Delete|" + self.msg["Entity"])
         self.send({Msg.Type: Msg.Decline, "Text": "Invalid entity"})
+
+    def commit(self):
+        self.log(LogLevel.Info, "Commit")
+        self.cnx.commit()
+        self.send({Msg.Type: Msg.Success})
+
+    def rollback(self):
+        self.log(LogLevel.Info, "RollBack")
+        self.cnx.rollback()
+        self.send({Msg.Type: Msg.Success})
 
     def search_person(self):
         self.log(LogLevel.Info, "SearchPerson")

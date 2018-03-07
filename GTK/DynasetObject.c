@@ -792,24 +792,50 @@ PxDynaset_Save(PxDynasetObject* self)
 
 	iRecordsChanged = PxDynaset_Write(self);
 	if (iRecordsChanged == -1) {
-		pyOk = PyObject_CallMethod(self->pyConnection, "rollback", NULL);
-		if (pyOk != NULL)
-			Py_DECREF(pyOk);
-		return false;
+        if (PyObject_TypeCheck(self->pyConnection, g.pySQLiteConnectionType)) {
+            pyOk = PyObject_CallMethod(self->pyConnection, "rollback", NULL);
+            if (pyOk != NULL)
+                Py_DECREF(pyOk);
+            return false;
+        }
+        else if (hl.pyClientType && PyObject_TypeCheck(self->pyConnection, hl.pyClientType)) {
+				hl.pyMsg = PyDict_New();
+				PyDict_SetItem(hl.pyMsg, hl.Msg_Type, hl.Msg_RollBack);
+				if (!Hinterland_Exchange(self->pyConnection)) {
+					return PyErr_Format(PyExc_RuntimeError, "Hinterland communication error: `%s`.", hl.sStatusMessage);
+				}
+        }
+        else {
+            PyErr_SetString(PyExc_RuntimeError, "No usable connection");
+            return false;
+        }
 	}
 	else {
-		pyOk = PyObject_CallMethod(self->pyConnection, "commit", NULL);
-		if (pyOk == NULL)
-			return false;
-		else {
-			Py_DECREF(pyOk);
-			if (!PxDynaset_CleanUp(self))
-				return false;
-			if (!PxDynaset_Thaw(self))
-				return false;
-			sprintf(sMessage, "Records updated: %d", iRecordsChanged);
-			gtk_statusbar_push(g.gtkStatusbar, 1, sMessage);
-		}
+        if (PyObject_TypeCheck(self->pyConnection, g.pySQLiteConnectionType)) {
+            pyOk = PyObject_CallMethod(self->pyConnection, "commit", NULL);
+            if (pyOk == NULL)
+                return false;
+            else {
+                Py_DECREF(pyOk);
+                if (!PxDynaset_CleanUp(self))
+                    return false;
+                if (!PxDynaset_Thaw(self))
+                    return false;
+                sprintf(sMessage, "Records updated: %d", iRecordsChanged);
+                gtk_statusbar_push(g.gtkStatusbar, 1, sMessage);
+            }
+        }
+        else if (hl.pyClientType && PyObject_TypeCheck(self->pyConnection, hl.pyClientType)) {
+				hl.pyMsg = PyDict_New();
+				PyDict_SetItem(hl.pyMsg, hl.Msg_Type, hl.Msg_Commit);
+				if (!Hinterland_Exchange(self->pyConnection)) {
+					return PyErr_Format(PyExc_RuntimeError, "Hinterland communication error: `%s`.", hl.sStatusMessage);
+				}
+        }
+        else {
+            PyErr_SetString(PyExc_RuntimeError, "No usable connection");
+            return false;
+        }
 	}
 	return true;
 }
@@ -1106,7 +1132,7 @@ PxDynaset_Write(PxDynasetObject* self)
 				// Hinterland connection
 
 				hl.pyMsg = PyDict_New();
-				PyDict_SetItem(hl.pyMsg, hl.Msg_Type, hl.Msg_Delete);
+				PyDict_SetItem(hl.pyMsg, hl.Msg_Type, hl.Msg_Set);
 				PyDict_SetItemString(hl.pyMsg, "Entity", self->pyTable);
 				pyParameters = PyDict_New();
 				pyMsgData = PyDict_New();

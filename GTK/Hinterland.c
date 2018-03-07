@@ -11,6 +11,8 @@ Hinterland_Init()
 	hl.Msg_Get = NULL;
 	hl.Msg_Set = NULL;
 	hl.Msg_Delete = NULL;
+	hl.Msg_Commit = NULL;
+	hl.Msg_RollBack = NULL;
 
 	PyObject* pyModuleDict = PyImport_GetModuleDict();
 	// check if script imported Hinterland and obtain pointer to class 'Client'
@@ -27,6 +29,8 @@ Hinterland_Init()
 		hl.Msg_Get = PyObject_GetAttrString(hl.MsgClass, "Get");
 		hl.Msg_Set = PyObject_GetAttrString(hl.MsgClass, "Set");
 		hl.Msg_Delete = PyObject_GetAttrString(hl.MsgClass, "Delete");
+		hl.Msg_Commit = PyObject_GetAttrString(hl.MsgClass, "Commit");
+		hl.Msg_RollBack = PyObject_GetAttrString(hl.MsgClass, "RollBack");
 	}
 	return true;
 }
