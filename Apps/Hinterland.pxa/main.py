@@ -2,8 +2,8 @@
 
 import pylax, sys, hinterland as hl
 
-host = "localhost"
-#host = "45.76.133.182"
+#host = "localhost"
+host = "45.76.133.182"
 
 session = hl.Client(host)
 if(session.status_message):
