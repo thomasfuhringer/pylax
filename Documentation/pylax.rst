@@ -191,7 +191,7 @@ Dynaset
     the SQL string used to pull data.
     If a *parent* :class:`Dynaset` is given it will be used to synchronize a master-detail
     relationship.
-    *connecion* can be a :class:`sqlite3.Connection` to be used instead of the default
+    *connecion* can be a :class:`sqlite3.Connection` or a `Hinterland` session to be used instead of the default
     connection.
 
 
