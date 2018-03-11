@@ -23,7 +23,6 @@ Hinterland_Init()
 			ErrorDialog("Can not load Python type 'Client'");
 			return false;
 		}
-		//Xx("hinterland client", g.pyHinterlandClientType);
 		hl.MsgClass = PyObject_GetAttrString(hl.pyModule, "Msg");
 		hl.Msg_Type = PyObject_GetAttrString(hl.MsgClass, "Type");
 		hl.Msg_Get = PyObject_GetAttrString(hl.MsgClass, "Get");
@@ -49,7 +48,8 @@ Hinterland_Exchange(PyObject* pyConnection)
 		bool bResult = true ? pyResult == Py_True : false;
 		Py_DECREF(pyResult);
 		hl.pyResultMsg = PyObject_GetAttrString(pyConnection, "msg");
-		Py_DECREF(hl.pyResultMsg);    // just borrow reference
+		//XX(hl.pyResultMsg);
+		//Py_DECREF(hl.pyResultMsg);    // just borrow reference
 		if (bResult) {
 			hl.sStatusMessage = NULL;
 			return true;
@@ -57,7 +57,7 @@ Hinterland_Exchange(PyObject* pyConnection)
 		else {
 			PyObject* pyStatusMessage = PyObject_GetAttrString(pyConnection, "status_message");
 			if (pyStatusMessage == Py_None)
-				hl.sStatusMessage = NULL;
+				hl.sStatusMessage = "No description from Hinterland";//NULL;
 			else
 				hl.sStatusMessage = PyUnicode_AsUTF8(pyStatusMessage);
 			Py_DECREF(pyStatusMessage);

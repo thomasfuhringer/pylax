@@ -694,7 +694,7 @@ Session_GetMessageAttribute(ClientSession* pSession, char* sKey)
 		PythonErrorDialog("Can not get dict key 'msg'.");
 		return NULL;
 	}
-	Py_DECREF(pyResult); // just borrow reference
+	//Py_DECREF(pyResult); // just borrow reference
 
 	if ((pyResult = PyDict_GetItemString(pyResult, sKey)) == NULL) {
 		PythonErrorDialog("Can not get dict key.");

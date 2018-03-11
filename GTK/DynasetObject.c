@@ -792,50 +792,49 @@ PxDynaset_Save(PxDynasetObject* self)
 
 	iRecordsChanged = PxDynaset_Write(self);
 	if (iRecordsChanged == -1) {
-        if (PyObject_TypeCheck(self->pyConnection, g.pySQLiteConnectionType)) {
-            pyOk = PyObject_CallMethod(self->pyConnection, "rollback", NULL);
-            if (pyOk != NULL)
-                Py_DECREF(pyOk);
-            return false;
-        }
-        else if (hl.pyClientType && PyObject_TypeCheck(self->pyConnection, hl.pyClientType)) {
-				hl.pyMsg = PyDict_New();
-				PyDict_SetItem(hl.pyMsg, hl.Msg_Type, hl.Msg_RollBack);
-				if (!Hinterland_Exchange(self->pyConnection)) {
-					return PyErr_Format(PyExc_RuntimeError, "Hinterland communication error: `%s`.", hl.sStatusMessage);
-				}
-        }
-        else {
-            PyErr_SetString(PyExc_RuntimeError, "No usable connection");
-            return false;
-        }
+		if (PyObject_TypeCheck(self->pyConnection, g.pySQLiteConnectionType)) {
+			pyOk = PyObject_CallMethod(self->pyConnection, "rollback", NULL);
+			if (pyOk != NULL)
+				Py_DECREF(pyOk);
+			return false;
+		}
+		else if (hl.pyClientType && PyObject_TypeCheck(self->pyConnection, hl.pyClientType)) {
+			hl.pyMsg = PyDict_New();
+			PyDict_SetItem(hl.pyMsg, hl.Msg_Type, hl.Msg_RollBack);
+			if (!Hinterland_Exchange(self->pyConnection)) {
+				return PyErr_Format(PyExc_RuntimeError, "Hinterland communication error: `%s`.", hl.sStatusMessage);
+			}
+		}
+		else {
+			PyErr_SetString(PyExc_RuntimeError, "No usable connection");
+			return false;
+		}
 	}
 	else {
-        if (PyObject_TypeCheck(self->pyConnection, g.pySQLiteConnectionType)) {
-            pyOk = PyObject_CallMethod(self->pyConnection, "commit", NULL);
-            if (pyOk == NULL)
-                return false;
-            else {
-                Py_DECREF(pyOk);
-                if (!PxDynaset_CleanUp(self))
-                    return false;
-                if (!PxDynaset_Thaw(self))
-                    return false;
-                sprintf(sMessage, "Records updated: %d", iRecordsChanged);
-                gtk_statusbar_push(g.gtkStatusbar, 1, sMessage);
-            }
-        }
-        else if (hl.pyClientType && PyObject_TypeCheck(self->pyConnection, hl.pyClientType)) {
-				hl.pyMsg = PyDict_New();
-				PyDict_SetItem(hl.pyMsg, hl.Msg_Type, hl.Msg_Commit);
-				if (!Hinterland_Exchange(self->pyConnection)) {
-					return PyErr_Format(PyExc_RuntimeError, "Hinterland communication error: `%s`.", hl.sStatusMessage);
-				}
-        }
-        else {
-            PyErr_SetString(PyExc_RuntimeError, "No usable connection");
-            return false;
-        }
+		if (PyObject_TypeCheck(self->pyConnection, g.pySQLiteConnectionType)) {
+			pyOk = PyObject_CallMethod(self->pyConnection, "commit", NULL);
+			if (pyOk == NULL)
+				return false;
+			Py_DECREF(pyOk);
+		}
+		else if (hl.pyClientType && PyObject_TypeCheck(self->pyConnection, hl.pyClientType)) {
+			hl.pyMsg = PyDict_New();
+			PyDict_SetItem(hl.pyMsg, hl.Msg_Type, hl.Msg_Commit);
+			if (!Hinterland_Exchange(self->pyConnection)) {
+				return PyErr_Format(PyExc_RuntimeError, "Hinterland communication error: `%s`.", hl.sStatusMessage);
+			}
+		}
+		else {
+			PyErr_SetString(PyExc_RuntimeError, "No usable connection");
+			return false;
+		}
+
+		if (!PxDynaset_CleanUp(self))
+			return false;
+		if (!PxDynaset_Thaw(self))
+			return false;
+		sprintf(sMessage, "Records changed: %d", iRecordsChanged);
+		gtk_statusbar_push(g.gtkStatusbar, 1, sMessage);
 	}
 	return true;
 }
@@ -937,7 +936,8 @@ PxDynaset_Write(PxDynasetObject* self)
 				if (!Hinterland_Exchange(self->pyConnection)) {
 					return PyErr_Format(PyExc_RuntimeError, "Hinterland communication error: `%s`.", hl.sStatusMessage);
 				}
-				Py_XDECREF(pyParams);
+				iRecordsChanged++;
+				Py_XDECREF(pyParameters);
 			}
 			else {
 				PyErr_SetString(PyExc_RuntimeError, "No usable connection");
@@ -1051,6 +1051,7 @@ PxDynaset_Write(PxDynasetObject* self)
 				if (!Hinterland_Exchange(self->pyConnection)) {
 					return PyErr_Format(PyExc_RuntimeError, "Hinterland communication error: `%s`.", hl.sStatusMessage);
 				}
+				iRecordsChanged++;
 				Py_XDECREF(pyMsgData);
 			}
 			else {
@@ -1161,6 +1162,7 @@ PxDynaset_Write(PxDynasetObject* self)
 				if (!Hinterland_Exchange(self->pyConnection)) {
 					return PyErr_Format(PyExc_RuntimeError, "Hinterland communication error: `%s`.", hl.sStatusMessage);
 				}
+				iRecordsChanged++;
 				Py_XDECREF(pyParameters);
 				Py_XDECREF(pyMsgData);
 			}
@@ -1183,7 +1185,6 @@ PxDynaset_Write(PxDynasetObject* self)
 			iRecordsChanged += iChildRecordsChanged;
 	}
 
-	//g_debug("Saved Dynaset! %d %s", iRecordsChanged, sSql);
 	return iRecordsChanged;
 }
 
@@ -1471,7 +1472,7 @@ PxDynaset_edit(PxDynasetObject* self, PyObject *args)
 static PyObject*
 PxDynaset_save(PxDynasetObject* self, PyObject *args)
 {
-	if (PxDynaset_Save(self) == -1) {
+	if (!PxDynaset_Save(self)) {
 		PythonErrorDialog();
 		return NULL;
 	}
