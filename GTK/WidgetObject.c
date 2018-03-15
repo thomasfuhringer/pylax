@@ -14,6 +14,7 @@ PxWidget_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 		self->pyParent = NULL;
 		self->bReadOnly = false;
 		self->bClean = true;
+		self->bSensitive = true;
 		self->bTable = false;
 		self->bPointer = false;
 		self->pyWindow = NULL;
@@ -418,6 +419,11 @@ PxWidget_setattro(PxWidgetObject* self, PyObject* pyAttributeName, PyObject *pyV
 			gtk_widget_set_sensitive(self->gtk, !self->bReadOnly);
 			return  0;
 		}
+		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "sensitive") == 0) {
+			self->bSensitive = PyObject_IsTrue(pyValue);
+			gtk_widget_set_sensitive(self->gtk, self->bSensitive && !self->bReadOnly);
+			return  0;
+		}
 		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "frame") == 0) {
 			g_debug("Widget frame not implemented");
 			return  0;
@@ -496,6 +502,12 @@ PxWidget_getattro(PxWidgetObject* self, PyObject* pyAttributeName)
 			guint iHeight = gtk_widget_get_allocated_height(self->gtk);
 			PyObject* pyRectangle = PyTuple_Pack(2, PyLong_FromLong(iWidth), PyLong_FromLong(iHeight));
 			return pyRectangle;
+		}
+		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "sensitive") == 0) {
+			if (self->bSensitive)
+			    Py_RETURN_TRUE;
+			else
+			    Py_RETURN_FALSE;
 		}
 	}
 	//return pyResult;

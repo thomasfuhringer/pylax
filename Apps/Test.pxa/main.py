@@ -135,17 +135,19 @@ buttonSearch = pylax.Button(tabPageMain, -410, 20, 20, 20, "⏎")
 buttonSearch.on_click = buttonSearch__on_click
 buttonSearch.defaultEnter = True
 
-selectionTable = pylax.Table(tabPageMain, 20, 80, -360, -130, dynaset=ds, label = pylax.Label(tabPageMain, 20, 60, 90, 20, "Select"))
+selectionTable = pylax.Table(tabPageMain, 20, 80, -360, -170, dynaset=ds, label = pylax.Label(tabPageMain, 20, 60, 90, 20, "Select"))
 selectionTable.add_column("Name", 70, "Name") # title, width, Dynaset column name
 selectionTable.add_column("Description", 100, "Description")
 selectionTable.showRowIndicator = True
 
 image = pylax.Image(tabPagePicture, 20, 40, -20, 320, dynaset=ds, column="Picture", label = pylax.Label(tabPagePicture, 20, 20, 70, 20, "Picture"))
 
-entryID = pylax.Entry(tabPageMain, 100, -100, -360, 20, dynaset=ds, column="ItemID", dataType=int, label = pylax.Label(tabPageMain, 20, -100, 70, 20, "ID"))
+entryID = pylax.Entry(tabPageMain, 100, -160, -360, 20, dynaset=ds, column="ItemID", dataType=int, label = pylax.Label(tabPageMain, 20, -160, 70, 20, "ID"))
 entryID.editFormat="{:,}"
 entryID.alignHoriz = pylax.Align.left
-entryName = pylax.Entry(tabPageMain, 100, -70, -360, 20, dynaset=ds, column="Name", dataType=str, label = pylax.Label(tabPageMain, 20, -70, 70, 20, "Name"))
+entryName = pylax.Entry(tabPageMain, 100, -130, -360, 20, dynaset=ds, column="Name", dataType=str, label = pylax.Label(tabPageMain, 20, -130, 70, 20, "Name"))
+entryDescription = pylax.MarkDownEntry(tabPageMain, 100, -100, -360, 40, dynaset=ds, column="Description", dataType=str, label = pylax.Label(tabPageMain, 20, -100, 70, 20, "Description"))
+#entryDescription.plain = True
 entryPrice = pylax.Entry(tabPageMain, 100, -40, -360, 20, dynaset=ds, column="Price", dataType=float, label = pylax.Label(tabPageMain, 20, -40, 70, 20, "Price"))
 entryPrice.format="{0:,.2f}"
 

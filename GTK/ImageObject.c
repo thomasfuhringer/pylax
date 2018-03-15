@@ -80,6 +80,8 @@ GtkButton_ClickedCB(GtkButton* gtkWidget, gpointer pUserData)
 				return false;
 			}
 			gtk_image_set_from_pixbuf(self->gtkImage, gdkPixbuf);
+            //scale_simple(width, height, gtk.gdk.INTERP_BILINEAR)
+            // gdk_pixbuf_scale_simple(GDK_INTERP_BILINEAR)
 
 			if (!gdk_pixbuf_save_to_buffer(gdkPixbuf, &sPictureBuffer, &nSize, "jpeg", &gError, NULL)) {
 				g_printerr("%s\n", gError->message);

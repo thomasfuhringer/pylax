@@ -1447,7 +1447,9 @@ PxDynaset_Edit(PxDynasetObject* self)
 			// readonly if widget is bound to column which has a parent
 			if (PyStructSequence_GET_ITEM(pyBoundWidget->pyDataColumn, PXDYNASETCOLUMN_PARENT) != Py_None)
 				bSensitive = FALSE;
-			gtk_widget_set_sensitive(pyBoundWidget->gtk, bSensitive);
+			//gtk_widget_set_sensitive(pyBoundWidget->gtk, bSensitive);
+            if (PyObject_SetAttrString(pyBoundWidget, "sensitive", bSensitive?Py_True:Py_False) == -1)
+			    return false;
 		}
 	}
 
@@ -1517,7 +1519,9 @@ PxDynaset_Freeze(PxDynasetObject* self)
 	for (n = 0; n < nLen; n++) {
 		pyWidget = (PxWidgetObject*)PyList_GetItem(self->pyWidgets, n);
 		if (pyWidget->bPointer)
-			gtk_widget_set_sensitive(pyWidget->gtk, false);
+			//gtk_widget_set_sensitive(pyWidget->gtk, false);
+            if (PyObject_SetAttrString(pyWidget, "sensitive", Py_False) == -1)
+			    return false;
 	}
 
 	PxDynaset_UpdateControlWidgets(self);
@@ -1550,7 +1554,9 @@ PxDynaset_Thaw(PxDynasetObject* self)
 	for (n = 0; n < nLen; n++) {
 		pyWidget = (PxWidgetObject*)PyList_GetItem(self->pyWidgets, n);
 		if (pyWidget->bPointer)
-			gtk_widget_set_sensitive(pyWidget->gtk, TRUE);
+			//gtk_widget_set_sensitive(pyWidget->gtk, TRUE);
+            if (PyObject_SetAttrString(pyWidget, "sensitive", Py_True) == -1)
+			    return false;
 	}
 
 	PxDynaset_UpdateControlWidgets(self);

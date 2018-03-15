@@ -346,6 +346,12 @@ main(int argc, char **argv)
 
 	g.gQuark = g_quark_from_static_string("Pylax");
 
+	// initialize EggMarkdown
+	g.pDownmarker = egg_markdown_new();
+	egg_markdown_set_output(g.pDownmarker, EGG_MARKDOWN_OUTPUT_PANGO);
+	egg_markdown_set_escape(g.pDownmarker, TRUE);
+	egg_markdown_set_smart_quoting(g.pDownmarker, TRUE);
+
 	g_signal_connect(g.gtkApp, "activate", G_CALLBACK(GtkAppActivateEventCB), NULL);
 	iResult = g_application_run(G_APPLICATION(g.gtkApp), argc, argv);
 	g_object_unref(g.gtkApp);

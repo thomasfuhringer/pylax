@@ -67,6 +67,10 @@ PyInit_pylax(void)
 	if (PyType_Ready(&PxEntryType) < 0)
 		return NULL;
 
+	PxMarkDownEntryType.tp_base = &PxWidgetType;
+	if (PyType_Ready(&PxMarkDownEntryType) < 0)
+		return NULL;
+
 	PxComboBoxType.tp_base = &PxWidgetType;
 	if (PyType_Ready(&PxComboBoxType) < 0)
 		return NULL;
@@ -118,6 +122,7 @@ PyInit_pylax(void)
 	Py_INCREF(&PxLabelType);
 	Py_INCREF(&PxButtonType);
 	Py_INCREF(&PxEntryType);
+	Py_INCREF(&PxMarkDownEntryType);
 	Py_INCREF(&PxComboBoxType);
 	Py_INCREF(&PxCanvasType);
 	Py_INCREF(&PxBoxType);
@@ -127,24 +132,25 @@ PyInit_pylax(void)
 	Py_INCREF(&PxTableType);
 	Py_INCREF(&PxTableColumnType);
 
-	PyModule_AddObject(pyModule, "Dynaset", (PyObject *)&PxDynasetType);
-	PyModule_AddObject(pyModule, "Image", (PyObject *)&PxImageType);
-	PyModule_AddObject(pyModule, "Menu", (PyObject *)&PxMenuType);
-	PyModule_AddObject(pyModule, "MenuItem", (PyObject *)&PxMenuItemType);
-	PyModule_AddObject(pyModule, "Widget", (PyObject *)&PxWidgetType);
-	PyModule_AddObject(pyModule, "Window", (PyObject *)&PxWindowType);
-	PyModule_AddObject(pyModule, "Form", (PyObject *)&PxFormType);
-	PyModule_AddObject(pyModule, "Label", (PyObject *)&PxLabelType);
-	PyModule_AddObject(pyModule, "Button", (PyObject *)&PxButtonType);
-	PyModule_AddObject(pyModule, "Entry", (PyObject *)&PxEntryType);
-	PyModule_AddObject(pyModule, "ComboBox", (PyObject *)&PxComboBoxType);
-	PyModule_AddObject(pyModule, "Canvas", (PyObject *)&PxCanvasType);
-	PyModule_AddObject(pyModule, "Box", (PyObject *)&PxBoxType);
-	PyModule_AddObject(pyModule, "Splitter", (PyObject *)&PxSplitterType);
-	PyModule_AddObject(pyModule, "Tab", (PyObject *)&PxTabType);
-	PyModule_AddObject(pyModule, "TabPage", (PyObject *)&PxTabPageType);
-	PyModule_AddObject(pyModule, "Table", (PyObject *)&PxTableType);
-	PyModule_AddObject(pyModule, "TableColumn", (PyObject *)&PxTableColumnType);
+	PyModule_AddObject(pyModule, "Dynaset", (PyObject*)&PxDynasetType);
+	PyModule_AddObject(pyModule, "Image", (PyObject*)&PxImageType);
+	PyModule_AddObject(pyModule, "Menu", (PyObject*)&PxMenuType);
+	PyModule_AddObject(pyModule, "MenuItem", (PyObject*)&PxMenuItemType);
+	PyModule_AddObject(pyModule, "Widget", (PyObject*)&PxWidgetType);
+	PyModule_AddObject(pyModule, "Window", (PyObject*)&PxWindowType);
+	PyModule_AddObject(pyModule, "Form", (PyObject*)&PxFormType);
+	PyModule_AddObject(pyModule, "Label", (PyObject*)&PxLabelType);
+	PyModule_AddObject(pyModule, "Button", (PyObject*)&PxButtonType);
+	PyModule_AddObject(pyModule, "Entry", (PyObject*)&PxEntryType);
+	PyModule_AddObject(pyModule, "MarkDownEntry", (PyObject*)&PxMarkDownEntryType);
+	PyModule_AddObject(pyModule, "ComboBox", (PyObject*)&PxComboBoxType);
+	PyModule_AddObject(pyModule, "Canvas", (PyObject*)&PxCanvasType);
+	PyModule_AddObject(pyModule, "Box", (PyObject*)&PxBoxType);
+	PyModule_AddObject(pyModule, "Splitter", (PyObject*)&PxSplitterType);
+	PyModule_AddObject(pyModule, "Tab", (PyObject*)&PxTabType);
+	PyModule_AddObject(pyModule, "TabPage", (PyObject*)&PxTabPageType);
+	PyModule_AddObject(pyModule, "Table", (PyObject*)&PxTableType);
+	PyModule_AddObject(pyModule, "TableColumn", (PyObject*)&PxTableColumnType);
 
 	if (PyDict_SetItemString(PxWidgetType.tp_dict, "defaultCoordinate", PyLong_FromLong(PxDEFAULT)) == -1)
 		return NULL;

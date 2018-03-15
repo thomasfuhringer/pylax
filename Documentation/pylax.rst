@@ -662,6 +662,22 @@ ComboBox
 
 
 
+.. _pylax-class-mark-down-entry:
+
+MarkDownEntry
+-----
+
+.. class:: MarkDownEntry
+
+    Multiple line text entry which supports MarkDown formatting
+
+    *Attributes and methods*
+
+    .. attribute:: inputString
+
+        The currently entered input as a raw string.
+
+
 .. _pylax-class-button:
 
 Button

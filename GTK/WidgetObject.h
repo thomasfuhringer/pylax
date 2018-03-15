@@ -16,6 +16,7 @@
 		bool bPointer; \
 		bool bReadOnly; \
 		bool bClean; \
+		bool bSensitive; \
 		PyObject* pyData; \
 		PyTypeObject* pyDataType; \
 		PxLabelObject* pyLabel; \

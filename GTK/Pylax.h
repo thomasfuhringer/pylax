@@ -4,6 +4,7 @@
 
 #include <Python.h>
 #include "structmember.h"
+#include "egg-markdown.h"
 
 // C RunTime Header Files
 #include <stdlib.h>
@@ -27,6 +28,7 @@
 #include "WindowObject.h"
 #include "FormObject.h"
 #include "EntryObject.h"
+#include "MarkDownEntryObject.h"
 #include "ComboBoxObject.h"
 #include "ImageObject.h"
 #include "ButtonObject.h"
@@ -72,6 +74,7 @@ typedef struct _PxGlobals
 	//PxImageObject* pyIcon;
 	PyObject* pyBeforeCloseCB;;
 	GdkPixbuf* gdkPixbufPlaceHolder;
+	EggMarkdown* pDownmarker;
 }
 PxGlobals;
 
