@@ -1,10 +1,10 @@
 // Version Information
 
-#define VER_PRODUCTVERSION_STR "0.1.1"
+#define VER_PRODUCTVERSION_STR "0.2.0"
 
 #define VER_MAJOR               0
-#define VER_MINOR               1
-#define VER_MICRO               1
+#define VER_MINOR               2
+#define VER_MICRO               0
 #define VER_PRODUCTVERSION      VER_MAJOR,VER_MINOR,VER_MICRO,0
 
 #define VER_RELEASE_LEVEL      "alpha" // ‘alpha’, ‘beta’, ‘candidate’, or ‘final’

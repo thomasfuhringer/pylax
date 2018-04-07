@@ -32,6 +32,10 @@ PxForm_init(PxFormObject *self, PyObject *args, PyObject *kwds)
 	gtk_container_check_resize(GTK_CONTAINER(g.gtkNotebook));
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(g.gtkNotebook), iIndex);
 	//PxWidget_RepositionChildren(self);
+    
+	gint x, y, width, height;
+	gtk_window_get_position(GTK_WINDOW(g.gtkMainWindow), &x, &y);
+	gtk_window_move(GTK_WINDOW(g.gtkMainWindow), x, y);   // trigger a configure-event
 
 	g_object_set_qdata(self->gtk, g.gQuark, self);
 	return 0;

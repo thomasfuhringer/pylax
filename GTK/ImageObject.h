@@ -8,9 +8,12 @@ typedef struct _PxImageObject
 {
 	PxWidgetObject_HEAD
 		GtkWidget* gtkImage;
+	GtkWidget* gtkButton;
 	PyObject* pyImageFormat;
-	bool bStretch;
-	bool bFill;
+	bool bScale;
+	long iMaxSize;
+	long iPrevWidth;
+	long iPrevHeight;
 }
 PxImageObject;
 

@@ -6,8 +6,8 @@
 typedef struct _PxMarkDownEntryObject
 {
 	PxWidgetObject_HEAD
-	GtkTextBuffer*	gtkTextBuffer;
-    bool bPlain;
+		GtkTextBuffer*	gtkTextBuffer;
+	bool bPlain;
 }
 PxMarkDownEntryObject;
 

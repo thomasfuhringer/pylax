@@ -39,6 +39,7 @@ PxTable_init(PxTableObject* self, PyObject* args, PyObject* kwds)
 
 	self->gtkTreeView = gtk_tree_view_new_with_model(GTK_TREE_MODEL(self->gtkListStore));
 	gtk_tree_view_set_grid_lines(self->gtkTreeView, GTK_TREE_VIEW_GRID_LINES_BOTH);
+	gtk_tree_view_set_fixed_height_mode(self->gtkTreeView, TRUE);
 	g_signal_connect(G_OBJECT(self->gtkTreeView), "focus-in-event", G_CALLBACK(GtkTreeView_FocusInEventCB), (gpointer)self);
 	g_object_unref(self->gtkListStore);   // tree view has acquired reference
 	gtk_tree_view_set_fixed_height_mode(self->gtkTreeView, TRUE);

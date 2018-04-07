@@ -13,8 +13,8 @@
 
 --------------
 
-Pylax is a database front end for SQLite that uses embedded Python as
-scripting language.
+Pylax is a database front end for SQLite and PostgreSQL that uses embedded 
+Python as scripting language.
 
 To use Pylax you download the Linux binaries, extract them to a directory
 and execute *start.sh*.
@@ -191,8 +191,9 @@ Dynaset
     the SQL string used to pull data.
     If a *parent* :class:`Dynaset` is given it will be used to synchronize a master-detail
     relationship.
-    *connecion* can be a :class:`sqlite3.Connection` or a `Hinterland` session to be used instead of the default
-    connection.
+    *connecion* can be a :class:`sqlite3.Connection` or :class:`psycopg2.extensions.connection``
+    or a `Hinterland` session to be used instead of the default connection 
+    (which is to the SQLite database opened with the App file).
 
 
     *Attributes and methods*
@@ -823,12 +824,14 @@ Image
 
 .. class:: Image
 
-    Displays an image bitmap. Currently only JPG format is supported and
-    the size is converted to 320 x 320. For this reason the widget should
-    be sized 320 x 320 on the screen.
+    Displays an image bitmap. Currently only JPG format is supported.
     In Edit mode a click on the widget brings up a file selector dialog
-    which allows to select a JPG file to be imported (and converted to
-    a size of 320 x 320).
+    which allows to select a JPG file to be imported.
+
+    .. attribute:: scale
+
+        If :const:`True` the bitmap will be scaled to fit the current 
+        size of the widget.
 
 
 .. _pylax-class-canvas:

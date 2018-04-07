@@ -11,6 +11,7 @@ PxWidget_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 	if (self != NULL) {
 		self->gtk = NULL;
 		self->gtkFixed = NULL;
+		self->fnRepositionCB = NULL;
 		self->pyParent = NULL;
 		self->bReadOnly = false;
 		self->bClean = true;
@@ -227,6 +228,8 @@ PxWidget_Reposition(PxWidgetObject* self)
 		GtkFixed* gtkFixedParent = gtk_widget_get_parent(self->gtk);
 		gtk_fixed_move(gtkFixedParent, self->gtk, rc.iLeft, rc.iTop);
 		gtk_widget_set_size_request(self->gtk, rc.iWidth, rc.iHeight);
+		if (self->fnRepositionCB)
+			self->fnRepositionCB(self, gtkFixedParent, &rc);
 	}
 	return true;
 }
@@ -391,6 +394,12 @@ PxWidget_SetData(PxWidgetObject* self, PyObject* pyData)
 	}
 	return true;
 }
+static PyObject*  // new ref, True if possible to move focus away
+PxWidget_render_focus(PxComboBoxObject* self)
+{
+	Py_RETURN_TRUE;
+}
+
 
 static PyObject* // new ref
 PxWidget_str(PxWidgetObject* self)
@@ -441,6 +450,7 @@ PxWidget_setattro(PxWidgetObject* self, PyObject* pyAttributeName, PyObject *pyV
 			}
 		}
 	}
+	//return Py_TYPE(self)->tp_base->tp_setattro((PyObject*)self, pyAttributeName, pyValue);
 	if (PyObject_GenericSetAttr((PyObject*)self, pyAttributeName, pyValue) < 0)
 		return -1;
 	return  0;
@@ -505,13 +515,13 @@ PxWidget_getattro(PxWidgetObject* self, PyObject* pyAttributeName)
 		}
 		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "sensitive") == 0) {
 			if (self->bSensitive)
-			    Py_RETURN_TRUE;
+				Py_RETURN_TRUE;
 			else
-			    Py_RETURN_FALSE;
+				Py_RETURN_FALSE;
 		}
 	}
-	//return pyResult;
-	return PxWidgetType.tp_base->tp_getattro((PyObject*)self, pyAttributeName);
+	return pyResult;
+	//return PxWidgetType.tp_base->tp_getattro((PyObject*)self, pyAttributeName);
 }
 
 static PyMemberDef PxWidget_members[] = {
@@ -541,6 +551,7 @@ static PyMethodDef PxWidget_methods[] = {
 	{ "refresh", (PyCFunction)PxWidget_pass, METH_NOARGS, "Ignore" },
 	{ "refresh_cell", (PyCFunction)PxWidget_pass, METH_VARARGS | METH_KEYWORDS, "Ignore" },
 	{ "refresh_row_pointer", (PyCFunction)PxWidget_pass, METH_NOARGS, "Ignore" },
+	{ "render_focus", (PyCFunction)PxWidget_render_focus, METH_NOARGS, "Return True if ready for focus to move on." },
 	//{ "focus_in", (PyCFunction)PxWidget_focus_in, METH_NOARGS, "Widget receives focus." },
 	{ NULL }
 };

@@ -8,7 +8,7 @@ dc = pylax.Widget.defaultCoordinate
 
 def newWindowMenuItem__on_click():
     form = pylax.Form(None, dc, dc, 640, 480, "Lybniz")
-    form.set_icon_from_file("Lybniz.ico")
+    #form.set_icon_from_file("Lybniz.ico")
 
     # GUI
     canvas = pylax.Canvas(form, 0, 110, 0, 0)

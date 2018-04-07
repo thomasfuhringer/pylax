@@ -65,6 +65,8 @@ typedef struct _PxGlobals
 	PyTypeObject* pySQLiteConnectionType;
 	PyObject* pyUserModule;
 	PyObject* pyConnection;
+	PyObject* pyPsycopg2Module;
+	PyTypeObject* pyPsycopg2ConnectionType;
 	bool bConnectionHasPxTables;
 	PyObject* pyCopyFunction;
 	PyObject* pyEnumType;

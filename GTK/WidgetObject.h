@@ -12,6 +12,7 @@
 		PxWidgetObject* pyParent; \
 		PxWindowObject* pyWindow; \
 		Rect rc; \
+	    void(*fnRepositionCB)(PyObject*, GtkFixed*, Rect*); \
 		bool bTable; \
 		bool bPointer; \
 		bool bReadOnly; \

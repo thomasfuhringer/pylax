@@ -22,26 +22,27 @@ PxMarkDownEntry_init(PxMarkDownEntryObject* self, PyObject* args, PyObject* kwds
 	if (Py_TYPE(self)->tp_base->tp_init((PyObject*)self, args, kwds) < 0)
 		return -1;
 
-	self->gtk = gtk_scrolled_window_new(NULL, NULL);
-	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(self->gtk), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+	self->gtk = gtk_frame_new(NULL);
+	GtkWidget* gtkScrolledWindow = gtk_scrolled_window_new(NULL, NULL);
+	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(gtkScrolledWindow), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	self->gtkTextBuffer = gtk_text_buffer_new(NULL);
 	GtkWidget* gtkTextView = gtk_text_view_new_with_buffer(self->gtkTextBuffer);
-	gtk_container_add(GTK_CONTAINER(self->gtk), gtkTextView);
+	gtk_container_add(GTK_CONTAINER(gtkScrolledWindow), gtkTextView);
+	gtk_container_add(GTK_CONTAINER(self->gtk), gtkScrolledWindow);
 
 	g_signal_connect(G_OBJECT(self->gtk), "destroy", G_CALLBACK(GtkWidget_DestroyCB), (gpointer)self);
 	g_signal_connect(G_OBJECT(self->gtkTextBuffer), "changed", G_CALLBACK(GtkTextBuffer_ChangedCB), (gpointer)self);
-	gtk_widget_set_events(GTK_WIDGET(self->gtk), GDK_FOCUS_CHANGE_MASK);
+	gtk_widget_set_events(GTK_WIDGET(gtkTextView), GDK_FOCUS_CHANGE_MASK);
 	g_signal_connect(G_OBJECT(gtkTextView), "focus-in-event", G_CALLBACK(GtkWidget_FocusInEventCB), (gpointer)self);
 
 	gtk_fixed_put(self->pyParent->gtkFixed, self->gtk, 0, 0);
 	PxWidget_Reposition(self);
 	g_object_set_qdata(G_OBJECT(self->gtk), g.gQuark, (gpointer)self);
 
-
-	if (self->pyDynaset){
+	if (self->pyDynaset) {
 		gtk_widget_set_sensitive(self->gtk, false);
 		self->bSensitive = false;
-		}
+	}
 	if (self->pyParent == NULL)
 		gtk_widget_hide(self->gtk);
 	else
@@ -265,16 +266,15 @@ PxMarkDownEntry_setattro(PxMarkDownEntryObject* self, PyObject* pyAttributeName,
 		}
 		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "sensitive") == 0) {
 			if (PyObject_IsTrue(pyValue)) {
-			    self->bSensitive = true;
-			    gtk_widget_set_sensitive(self->gtk, !self->bReadOnly);
+				self->bSensitive = true;
+				gtk_widget_set_sensitive(self->gtk, !self->bReadOnly);
 			}
 			else {
-			    self->bSensitive = false;
-			    gtk_widget_set_sensitive(self->gtk, FALSE);
-			    g_debug("insens");
+				self->bSensitive = false;
+				gtk_widget_set_sensitive(self->gtk, FALSE);
 			}
-		    if (!PxMarkDownEntry_RenderData(self))
-			    return -1;
+			if (!PxMarkDownEntry_RenderData(self))
+				return -1;
 			return 0;
 		}
 	}
@@ -307,9 +307,9 @@ PxMarkDownEntry_getattro(PxMarkDownEntryObject* self, PyObject* pyAttributeName)
 		}
 		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "sensitive") == 0) {
 			if (self->bSensitive)
-			    Py_RETURN_TRUE;
+				Py_RETURN_TRUE;
 			else
-			    Py_RETURN_FALSE;
+				Py_RETURN_FALSE;
 		}
 	}
 	return Py_TYPE(self)->tp_base->tp_getattro((PyObject*)self, pyAttributeName);

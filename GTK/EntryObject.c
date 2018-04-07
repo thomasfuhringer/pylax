@@ -307,7 +307,8 @@ PxEntry_setattro(PxEntryObject* self, PyObject* pyAttributeName, PyObject *pyVal
 			}
 		}
 	}
-	return PxEntryType.tp_base->tp_setattro((PyObject*)self, pyAttributeName, pyValue);
+	//return PxEntryType.tp_base->tp_setattro((PyObject*)self, pyAttributeName, pyValue);
+	return Py_TYPE(self)->tp_base->tp_setattro((PyObject*)self, pyAttributeName, pyValue);
 }
 
 static PyObject* // new ref

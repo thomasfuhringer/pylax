@@ -45,8 +45,6 @@ PxSplitter_init(PxSplitterObject* self, PyObject* args, PyObject *kwds)
 	PxSplitter_ResizeBoxes(self);
 
 	gtk_fixed_put(self->pyParent->gtkFixed, self->gtk, 0, 0);
-	//gtk_container_check_resize(GTK_CONTAINER(self->gtk));
-	//gtk_container_check_resize(GTK_CONTAINER(g.gtkNotebook));
 	gtk_widget_show_all(self->gtk);
 	//PxWidget_Reposition(self);
 	g_signal_connect(G_OBJECT(self->gtk), "notify::position", G_CALLBACK(NotifyPositionEventCB), self);
@@ -174,7 +172,7 @@ PyTypeObject PxSplitterType = {
 	PxSplitter_setattro,       /* tp_setattro */
 	0,                         /* tp_as_buffer */
 	Py_TPFLAGS_DEFAULT,        /* tp_flags */
-	"Splits the client area in two panes, one of which is elastic",  /* tp_doc */
+	"Splits the client area in two panes, one or both of which are elastic",  /* tp_doc */
 	0,                         /* tp_traverse */
 	0,                         /* tp_clear */
 	0,                         /* tp_richcompare */

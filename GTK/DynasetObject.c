@@ -565,9 +565,10 @@ PxDynaset_execute(PxDynasetObject* self, PyObject* args, PyObject* kwds)
 
 	if (!PxDynaset_Clear(self))
 		return NULL;
-	//Xx("conn ",self->pyConnection);
-	if (PyObject_TypeCheck(self->pyConnection, g.pySQLiteConnectionType)) {
-		// SQLite connection
+
+	if (PyObject_TypeCheck(self->pyConnection, g.pySQLiteConnectionType) ||
+		(g.pyPsycopg2ConnectionType && PyObject_TypeCheck(self->pyConnection, g.pyPsycopg2ConnectionType))) {
+		// SQLite or PostgreSQL connection
 
 		if (self->pyCursor && PyObject_CallMethod(self->pyCursor, "close", NULL) == NULL)
 			return NULL;
@@ -576,14 +577,16 @@ PxDynaset_execute(PxDynasetObject* self, PyObject* args, PyObject* kwds)
 			return NULL;
 		}
 
-		const char* sQuery = PyUnicode_AsUTF8(self->pyQuery);
 		if (pyParameters)
-			pyResult = PyObject_CallMethod(self->pyCursor, "execute", "(sO)", sQuery, pyParameters);
+			pyResult = PyObject_CallMethod(self->pyCursor, "execute", "(OO)", self->pyQuery, pyParameters);
 		else
-			pyResult = PyObject_CallMethod(self->pyCursor, "execute", "(s)", sQuery);
+			pyResult = PyObject_CallMethod(self->pyCursor, "execute", "(O)", self->pyQuery);
 		if (pyResult == NULL) {
-			return NULL;
+			PyErr_Print();
+			//PythonErrorDialog();
+			//return NULL;
 		}
+		Py_DECREF(pyResult);
 
 		PyObject* pyColumnDescriptions = PyObject_GetAttrString(self->pyCursor, "description");
 		PyObject* pyIterator = PyObject_GetIter(pyColumnDescriptions);
@@ -592,6 +595,7 @@ PxDynaset_execute(PxDynasetObject* self, PyObject* args, PyObject* kwds)
 		if (pyIterator == NULL) {
 			return NULL;
 		}
+
 		// make my columns' index numbers point to correct position in query result tuples
 		while (pyItem = PyIter_Next(pyIterator)) {
 			pyColumnName = PyTuple_GetItem(pyItem, 0);
@@ -615,7 +619,10 @@ PxDynaset_execute(PxDynasetObject* self, PyObject* args, PyObject* kwds)
 		// create Dynaset rows and reference to query result tuples
 		PyObject* pyRow = NULL;
 		self->nRows = 0;
-		while (pyItem = PyIter_Next(pyResult)) {
+
+		pyResult = PyObject_CallMethod(self->pyCursor, "fetchall", NULL);
+		pyIterator = PyObject_GetIter(pyResult);
+		while (pyItem = PyIter_Next(pyIterator)) {
 			//Py_INCREF(pyItem); // ??
 			Py_INCREF(Py_None);
 			Py_INCREF(Py_False);
@@ -633,6 +640,7 @@ PxDynaset_execute(PxDynasetObject* self, PyObject* args, PyObject* kwds)
 			self->nRows++;
 		}
 		Py_DECREF(pyResult);
+		Py_DECREF(pyIterator);
 		Py_DECREF(pyColumnDescriptions);
 	}
 	else if (hl.pyClientType && PyObject_TypeCheck(self->pyConnection, hl.pyClientType)) {
@@ -792,7 +800,9 @@ PxDynaset_Save(PxDynasetObject* self)
 
 	iRecordsChanged = PxDynaset_Write(self);
 	if (iRecordsChanged == -1) {
-		if (PyObject_TypeCheck(self->pyConnection, g.pySQLiteConnectionType)) {
+		if (PyObject_TypeCheck(self->pyConnection, g.pySQLiteConnectionType) ||
+			(g.pyPsycopg2ConnectionType && PyObject_TypeCheck(self->pyConnection, g.pyPsycopg2ConnectionType))) {
+			// SQLite or PostgreSQL connection
 			pyOk = PyObject_CallMethod(self->pyConnection, "rollback", NULL);
 			if (pyOk != NULL)
 				Py_DECREF(pyOk);
@@ -811,7 +821,8 @@ PxDynaset_Save(PxDynasetObject* self)
 		}
 	}
 	else {
-		if (PyObject_TypeCheck(self->pyConnection, g.pySQLiteConnectionType)) {
+		if (PyObject_TypeCheck(self->pyConnection, g.pySQLiteConnectionType) ||
+			(g.pyPsycopg2ConnectionType && PyObject_TypeCheck(self->pyConnection, g.pyPsycopg2ConnectionType))) {
 			pyOk = PyObject_CallMethod(self->pyConnection, "commit", NULL);
 			if (pyOk == NULL)
 				return false;
@@ -843,15 +854,18 @@ static int
 PxDynaset_Write(PxDynasetObject* self)
 {
 	PyObject* pyResult, *pyColumnName, *pyColumn, *pyRow, *pyRowData, *pyRowDataOld,
-		*pyRowDelete, *pyRowNew, *pyData, *pyIsKey, *pyParams, *pyCursor, *pyLastRowID,
+		*pyRowDelete, *pyRowNew, *pyData, *pyIsKey, *pyParams, *pyLastRowID,
 		*pyParameters, *pyMsgData, *tmp;
 	Py_ssize_t nRow, nColumn, nPos;
 	int iRecordsChanged = 0;
 	int iChildRecordsChanged = 0;
 	char* sSql;
 	char* sSql2;
+	//char* sAutoColumnName;
 	PxDynasetObject* pyChild;
 	Py_ssize_t n, nLen;
+
+	bool bSQLite = PyObject_TypeCheck(self->pyConnection, g.pySQLiteConnectionType);
 
 	// iterate over own rows
 	nLen = PySequence_Size(self->pyRows);
@@ -866,7 +880,8 @@ PxDynaset_Write(PxDynasetObject* self)
 
 		// DELETE
 		if (pyRowDelete == Py_True && pyRowNew == Py_False) {
-			if (PyObject_TypeCheck(self->pyConnection, g.pySQLiteConnectionType)) {
+			if (PyObject_TypeCheck(self->pyConnection, g.pySQLiteConnectionType) ||
+				(g.pyPsycopg2ConnectionType && PyObject_TypeCheck(self->pyConnection, g.pyPsycopg2ConnectionType))) {
 				char* sArr[3] = { "DELETE FROM ", PyUnicode_AsUTF8(self->pyTable), " WHERE " };
 				sSql = StringArrayCat(sArr, 3);
 
@@ -879,7 +894,7 @@ PxDynaset_Write(PxDynasetObject* self)
 					pyIsKey = PyStructSequence_GetItem(pyColumn, PXDYNASETCOLUMN_KEY);
 					pyData = PyTuple_GetItem(pyRowData, nColumn);
 					if (pyIsKey == Py_True) {
-						sSql = StringAppend2(sSql, PyUnicode_AsUTF8(pyColumnName), "=? AND ");
+						sSql = StringAppend2(sSql, PyUnicode_AsUTF8(pyColumnName), bSQLite ? "=? AND " : "=%s AND ");
 						if (PyList_Append(pyParams, pyData) == -1) {
 							return -1;
 						}
@@ -890,8 +905,8 @@ PxDynaset_Write(PxDynasetObject* self)
 				sSql = StringAppend2(sSql, ";", NULL);
 
 				if (PySequence_Size(pyParams) > 0) {
-					pyCursor = PyObject_CallMethod(self->pyConnection, "execute", "(sO)", sSql, PyList_AsTuple(pyParams));
-					if (pyCursor == NULL) {
+					pyResult = PyObject_CallMethod(self->pyCursor, "execute", "(sO)", sSql, PyList_AsTuple(pyParams));
+					if (pyResult == NULL) {
 						return -1;
 					}
 					iRecordsChanged++;
@@ -900,7 +915,7 @@ PxDynaset_Write(PxDynasetObject* self)
 					PyErr_SetString(PyExc_RuntimeError, "No key columns. Can not delete.");
 					return -1;
 				}
-				Py_DECREF(pyCursor);
+				Py_DECREF(pyResult);
 
 				if (self->sDeleteSQL)
 					PyMem_RawFree(self->sDeleteSQL);
@@ -946,8 +961,8 @@ PxDynaset_Write(PxDynasetObject* self)
 		}
 		// INSERT
 		else if (pyRowNew == Py_True) {
-			//g_debug("INSERT");
-			if (PyObject_TypeCheck(self->pyConnection, g.pySQLiteConnectionType)) {
+			if (PyObject_TypeCheck(self->pyConnection, g.pySQLiteConnectionType) ||
+				(g.pyPsycopg2ConnectionType && PyObject_TypeCheck(self->pyConnection, g.pyPsycopg2ConnectionType))) {
 				char* sArr[3] = { "INSERT INTO ", PyUnicode_AsUTF8(self->pyTable), " (" };
 				sSql = StringArrayCat(sArr, 3);
 				sSql2 = StringAppend(NULL, ") VALUES (");
@@ -963,7 +978,7 @@ PxDynaset_Write(PxDynasetObject* self)
 
 					if (pyIsKey != Py_None && self->pyAutoColumn != pyColumn) {
 						sSql = StringAppend2(sSql, PyUnicode_AsUTF8(pyColumnName), ",");
-						sSql2 = StringAppend(sSql2, "?,");
+						sSql2 = StringAppend(sSql2, bSQLite ? "?," : "%s,");
 						if (PyList_Append(pyParams, pyData) == -1) {
 							return -1;
 						}
@@ -978,7 +993,7 @@ PxDynaset_Write(PxDynasetObject* self)
 
 				if (self->bHasWhoCols) {
 					sSql = StringAppend(sSql, "ModDate,ModUser,");
-					sSql2 = StringAppend(sSql2, "CURRENT_TIMESTAMP,?,");
+					sSql2 = StringAppend(sSql2, bSQLite ? "CURRENT_TIMESTAMP,?," : "CURRENT_TIMESTAMP,%s,");
 					if (PyList_Append(pyParams, PyLong_FromLong(g.iCurrentUser)) == -1) {
 						return -1;
 					}
@@ -986,16 +1001,31 @@ PxDynaset_Write(PxDynasetObject* self)
 
 				memset(sSql + strlen(sSql) - 1, '\0', 1); // cut off final comma
 				memset(sSql2 + strlen(sSql2) - 1, '\0', 1);
-				sSql = StringAppend2(sSql, sSql2, ");");
 
-				pyCursor = PyObject_CallMethod(self->pyConnection, "execute", "(sO)", sSql, PyList_AsTuple(pyParams));
-				if (pyCursor == NULL) {
+				if (self->pyAutoColumn && g.pyPsycopg2ConnectionType && PyObject_TypeCheck(self->pyConnection, g.pyPsycopg2ConnectionType)) {
+                    pyColumnName = PyStructSequence_GetItem(self->pyAutoColumn, PXDYNASETCOLUMN_NAME);
+                    sSql = StringAppend2(sSql, sSql2, ") RETURNING ");
+                    sSql = StringAppend2(sSql, PyUnicode_AsUTF8(pyColumnName), ";");
+				} else
+                    sSql = StringAppend2(sSql, sSql2, ");");
+
+				pyResult = PyObject_CallMethod(self->pyCursor, "execute", "(sO)", sSql, PyList_AsTuple(pyParams));
+				if (pyResult == NULL) {
 					PyErr_Print();
 					return -1;
 				}
+				Py_DECREF(pyResult);
 
 				if (self->pyAutoColumn) {
-					pyLastRowID = PyObject_GetAttrString(pyCursor, "lastrowid");
+                    if (g.pyPsycopg2ConnectionType && PyObject_TypeCheck(self->pyConnection, g.pyPsycopg2ConnectionType)) {
+                        pyResult = PyObject_CallMethod(self->pyCursor, "fetchone", NULL);
+                        if (pyResult == NULL) {
+                            PyErr_Print();
+                            return -1;
+                        }
+                        pyLastRowID = PyStructSequence_GET_ITEM(pyResult, 0);
+                    } else
+                        pyLastRowID = PyObject_GetAttrString(self->pyCursor, "lastrowid");
 					if (pyLastRowID == NULL) {
 						PyErr_Print();
 						return -1;
@@ -1011,11 +1041,13 @@ PxDynaset_Write(PxDynasetObject* self)
 						self->iLastRowID = PyLong_AsLong(pyLastRowID);
 						Py_XDECREF(tmp);
 						PxDynaset_UpdateAutoColumnInChildren(self, self->pyAutoColumn, pyLastRowID);
-					}
+                    }
+
+					if (g.pyPsycopg2ConnectionType && PyObject_TypeCheck(self->pyConnection, g.pyPsycopg2ConnectionType))
+						Py_XDECREF(pyResult);
 				}
 
 				iRecordsChanged++;
-				Py_DECREF(pyCursor);
 
 				if (self->sInsertSQL)
 					PyMem_RawFree(self->sInsertSQL);
@@ -1061,7 +1093,8 @@ PxDynaset_Write(PxDynasetObject* self)
 		}
 		// UPDATE
 		else if (pyRowDataOld != Py_None) {
-			if (PyObject_TypeCheck(self->pyConnection, g.pySQLiteConnectionType)) {
+			if (PyObject_TypeCheck(self->pyConnection, g.pySQLiteConnectionType) ||
+				(g.pyPsycopg2ConnectionType && PyObject_TypeCheck(self->pyConnection, g.pyPsycopg2ConnectionType))) {
 				sSql = StringAppend(NULL, "UPDATE ");  // allocate on heap
 				sSql = StringAppend2(sSql, PyUnicode_AsUTF8(self->pyTable), " SET ");
 				sSql2 = StringAppend(NULL, " WHERE ");
@@ -1077,13 +1110,13 @@ PxDynaset_Write(PxDynasetObject* self)
 					pyIsKey = PyStructSequence_GetItem(pyColumn, PXDYNASETCOLUMN_KEY);
 					pyData = PyTuple_GetItem(pyRowData, nColumn);
 					if (pyIsKey == Py_False) {
-						sSql = StringAppend2(sSql, PyUnicode_AsUTF8(pyColumnName), "=?,");
+						sSql = StringAppend2(sSql, PyUnicode_AsUTF8(pyColumnName), bSQLite ? "=?," : "=%s,");
 						if (PyList_Append(pyParams1, pyData) == -1) {
 							return -1;
 						}
 					}
 					else if (pyIsKey == Py_True) {
-						sSql2 = StringAppend2(sSql2, PyUnicode_AsUTF8(pyColumnName), "=? AND ");
+						sSql2 = StringAppend2(sSql2, PyUnicode_AsUTF8(pyColumnName), bSQLite ? "=? AND " : "=%s AND ");
 						if (PyList_Append(pyParams2, pyData) == -1) {
 							return -1;
 						}
@@ -1096,7 +1129,7 @@ PxDynaset_Write(PxDynasetObject* self)
 				}
 
 				if (self->bHasWhoCols) {
-					sSql = StringAppend(sSql, "ModDate=CURRENT_TIMESTAMP,ModUser=?,");
+					sSql = StringAppend(sSql, bSQLite ? "ModDate=CURRENT_TIMESTAMP,ModUser=?," : "ModDate=CURRENT_TIMESTAMP,ModUser=%s,");
 					if (PyList_Append(pyParams1, PyLong_FromLong(g.iCurrentUser)) == -1) {
 						return -1;
 					}
@@ -1111,14 +1144,14 @@ PxDynaset_Write(PxDynasetObject* self)
 				memset(sSql2 + strlen(sSql2) - 5, '\0', 1); // cut off final ' AND '
 				sSql = StringAppend2(sSql, sSql2, ";");
 
-				pyCursor = PyObject_CallMethod(self->pyConnection, "execute", "(sO)", sSql, PyList_AsTuple(pyParams));
+				pyResult = PyObject_CallMethod(self->pyCursor, "execute", "(sO)", sSql, PyList_AsTuple(pyParams));
 				PyErr_Print();
-				if (pyCursor == NULL) {
+				if (pyResult == NULL) {
 					return -1;
 				}
 				iRecordsChanged++;
 
-				Py_DECREF(pyCursor);
+				Py_DECREF(pyResult);
 
 				if (self->sUpdateSQL)
 					PyMem_RawFree(self->sUpdateSQL);
@@ -1448,8 +1481,8 @@ PxDynaset_Edit(PxDynasetObject* self)
 			if (PyStructSequence_GET_ITEM(pyBoundWidget->pyDataColumn, PXDYNASETCOLUMN_PARENT) != Py_None)
 				bSensitive = FALSE;
 			//gtk_widget_set_sensitive(pyBoundWidget->gtk, bSensitive);
-            if (PyObject_SetAttrString(pyBoundWidget, "sensitive", bSensitive?Py_True:Py_False) == -1)
-			    return false;
+			if (PyObject_SetAttrString(pyBoundWidget, "sensitive", bSensitive ? Py_True : Py_False) == -1)
+				return false;
 		}
 	}
 
@@ -1520,8 +1553,8 @@ PxDynaset_Freeze(PxDynasetObject* self)
 		pyWidget = (PxWidgetObject*)PyList_GetItem(self->pyWidgets, n);
 		if (pyWidget->bPointer)
 			//gtk_widget_set_sensitive(pyWidget->gtk, false);
-            if (PyObject_SetAttrString(pyWidget, "sensitive", Py_False) == -1)
-			    return false;
+			if (PyObject_SetAttrString(pyWidget, "sensitive", Py_False) == -1)
+				return false;
 	}
 
 	PxDynaset_UpdateControlWidgets(self);
@@ -1555,8 +1588,8 @@ PxDynaset_Thaw(PxDynasetObject* self)
 		pyWidget = (PxWidgetObject*)PyList_GetItem(self->pyWidgets, n);
 		if (pyWidget->bPointer)
 			//gtk_widget_set_sensitive(pyWidget->gtk, TRUE);
-            if (PyObject_SetAttrString(pyWidget, "sensitive", Py_True) == -1)
-			    return false;
+			if (PyObject_SetAttrString(pyWidget, "sensitive", Py_True) == -1)
+				return false;
 	}
 
 	PxDynaset_UpdateControlWidgets(self);

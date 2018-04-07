@@ -20,7 +20,7 @@ static int
 PxLabel_init(PxLabelObject* self, PyObject* args, PyObject* kwds)
 {
 	char* sCaption;
-	if (PxLabelType.tp_base->tp_init((PyObject *)self, args, kwds) < 0)
+	if (PxLabelType.tp_base->tp_init((PyObject*)self, args, kwds) < 0)
 		return -1;
 
 	if (gArgs.pyCaption != NULL)

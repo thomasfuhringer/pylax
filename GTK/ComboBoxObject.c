@@ -3,6 +3,7 @@
 
 static void GtkComboBox_ChangedCB(GtkWidget* gtkWidget, GdkEvent* gdkEvent, gpointer pUserData);
 static gboolean GtkComboBox_FocusInEventCB(GtkWidget* gtkWidget, GdkEvent* gdkEvent, gpointer gUserData);
+static PyObject* PxComboBox_refresh(PxComboBoxObject* self);
 
 static PyObject*
 PxComboBox_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
@@ -16,10 +17,6 @@ PxComboBox_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 	else
 		return NULL;
 }
-
-//extern PyTypeObject PxWidgetType;
-
-//static bool PxComboBox_SetLabel(PxComboBoxObject* self, PyObject* pyLabel);
 
 static int
 PxComboBox_init(PxComboBoxObject *self, PyObject *args, PyObject *kwds)
@@ -38,8 +35,8 @@ PxComboBox_init(PxComboBoxObject *self, PyObject *args, PyObject *kwds)
 	PxWidget_Reposition(self);
 	g_object_set_qdata(self->gtk, g.gQuark, self);
 
-	if (self->pyDynaset)
-		gtk_widget_set_sensitive(self->gtk, false);
+	//if (self->pyDynaset)
+	//	gtk_widget_set_sensitive(self->gtk, false);
 	if (self->pyParent == NULL)
 		gtk_widget_hide(self->gtk);
 	else
@@ -85,7 +82,7 @@ PxComboBox_append(PxComboBoxObject* self, PyObject *args, PyObject *kwds)
 static gboolean
 GtkComboBox_FocusInEventCB(GtkWidget* gtkWidget, GdkEvent* gdkEvent, gpointer gUserData)
 {
-	PxEntryObject* self = (PxEntryObject*)gUserData;
+	PxComboBoxObject* self = (PxComboBoxObject*)gUserData;
 
 	if (self->pyWindow->pyFocusWidget == (PxWidgetObject*)self)
 		return FALSE;
@@ -117,6 +114,32 @@ GtkComboBox_ChangedCB(GtkWidget* gtkWidget, GdkEvent* gdkEvent, gpointer pUserDa
 			return;
 		}
 		pyData = PyTuple_GET_ITEM(pyItem, 1);
+	}
+
+	if (self->pyValidateCB) {
+		PyObject* pyArgs = PyTuple_Pack(2, (PyObject*)self, pyData);
+		PyObject* pyResult = PyObject_CallObject(self->pyValidateCB, pyArgs);
+		Py_DECREF(pyArgs);
+		if (pyResult == NULL)
+			return NULL;
+		else if (pyResult == Py_False) { // "validate" function of Widget is supposed to return False if data declined.
+			gtk_widget_grab_focus(self->gtk);
+			return pyResult;
+		}
+		else if (pyResult == PyExc_Warning) { // callback has taken care of populating widget
+			self->bClean = true;
+			Py_XDECREF(pyResult);
+			pyResult = PxComboBox_refresh(self);
+			if (pyResult == NULL)
+				return NULL;
+			Py_XDECREF(pyResult);
+			Py_RETURN_TRUE;
+		}
+		else if (pyResult != Py_True) {
+			PyErr_SetString(PyExc_RuntimeError, "'verify' function of Widget has to return a boolean.");
+			return NULL;
+		}
+		Py_XDECREF(pyResult);
 	}
 	PxAttachObject(&self->pyData, pyData, true);
 
@@ -156,7 +179,7 @@ PxComboBox_RenderData(PxComboBoxObject* self, bool bFormat)
 		gtk_combo_box_set_active(self->gtk, nIndex);
 	}
 	else {
-		g_message("Warning - Key '%.200s' is not in the data of ComboBox.", self->pyData);
+		g_message("Warning - Key '%.200s' is not within the data of ComboBox.", self->pyData);
 		gtk_combo_box_set_active(self->gtk, -1);
 	}
 	return true;
@@ -199,10 +222,9 @@ PxComboBox_SetData(PxComboBoxObject* self, PyObject* pyData)
 	return true;
 }
 
-static PyObject *
+static PyObject*
 PxComboBox_refresh(PxComboBoxObject* self)
 {
-	//g_debug("PxComboBox_refresh");
 	if (self->pyDynaset == NULL || !self->bClean)
 		Py_RETURN_TRUE;
 
@@ -228,6 +250,58 @@ PxComboBox_refresh(PxComboBoxObject* self)
 	Py_RETURN_TRUE;
 }
 
+static PyObject*  // new ref, True if possible to move focus away
+PxComboBox_render_focus(PxComboBoxObject* self)
+{/*
+	PyObject* pyData = NULL, *pyResult = NULL;
+
+	if (self->bClean) {
+		Py_RETURN_TRUE;
+	}
+
+	pyData = PxEntry_get_input_data(self);
+	if (pyData == NULL)
+		return NULL;
+	if (PyObject_RichCompareBool(self->pyData, pyData, Py_EQ)) {  // no true changes were made
+		Py_DECREF(pyData);
+		PxDynaset_Thaw(self->pyDynaset);
+		self->bClean = true;
+		Py_RETURN_TRUE;
+	}
+
+	if (self->pyValidateCB) {
+		PyObject* pyArgs = PyTuple_Pack(2, (PyObject*)self, pyData);
+		pyResult = PyObject_CallObject(self->pyValidateCB, pyArgs);
+		Py_DECREF(pyArgs);
+		if (pyResult == NULL)
+			return NULL;
+		else if (pyResult == Py_False) { // "validate" function of Widget is supposed to return False if data declined.
+			gtk_widget_grab_focus(self->gtk);
+			return pyResult;
+		}
+		else if (pyResult == PyExc_Warning) { // callback has taken care of populating widget
+			self->bClean = true;
+			Py_XDECREF(pyResult);
+			pyResult = PxComboBox_refresh(self);
+			if (pyResult == NULL)
+				return NULL;
+			Py_XDECREF(pyResult);
+			Py_RETURN_TRUE;
+		}
+		else if (pyResult != Py_True) {
+			PyErr_SetString(PyExc_RuntimeError, "'verify' function of Widget has to return a boolean.");
+			return NULL;
+		}
+		Py_XDECREF(pyResult);
+	}
+
+	if (!PxComboBox_SetData(self, pyData))
+		return NULL;
+
+	self->bClean = true;
+*/	Py_RETURN_TRUE;
+}
+
 static int
 PxComboBox_setattro(PxComboBoxObject* self, PyObject* pyAttributeName, PyObject *pyValue)
 {
@@ -242,14 +316,14 @@ PxComboBox_setattro(PxComboBoxObject* self, PyObject* pyAttributeName, PyObject 
 			return 0;
 		}
 	}
-	return PyObject_GenericSetAttr((PyObject*)self, pyAttributeName, pyValue);
+	return Py_TYPE(self)->tp_base->tp_setattro((PyObject*)self, pyAttributeName, pyValue);
 }
 
 static PyObject *
 PxComboBox_getattro(PxComboBoxObject* self, PyObject* pyAttributeName)
 {
 	PyObject* pyResult;
-	pyResult = PyObject_GenericGetAttr((PyObject *)self, pyAttributeName);
+	pyResult = PyObject_GenericGetAttr((PyObject*)self, pyAttributeName);
 	if (pyResult == NULL && PyErr_ExceptionMatches(PyExc_AttributeError) && PyUnicode_Check(pyAttributeName)) {
 		if (PyUnicode_CompareWithASCIIString(pyAttributeName, "data") == 0) {
 			PyErr_Clear();
@@ -279,6 +353,7 @@ static PyMemberDef PxComboBox_members[] = {
 static PyMethodDef PxComboBox_methods[] = {
 	{ "refresh", (PyCFunction)PxComboBox_refresh, METH_NOARGS, "Pull fresh data" },
 	{ "append", (PyCFunction)PxComboBox_append, METH_VARARGS | METH_KEYWORDS, "Append selectable item." },
+	{ "render_focus", (PyCFunction)PxComboBox_render_focus, METH_NOARGS, "Return True if ready for focus to move on." },
 	{ NULL }
 };
 
