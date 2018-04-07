@@ -12,7 +12,5 @@ but switched to [GTK](GTK) because development went much faster.
 ![Item form screen shot](GTK/Screenshot%20Item.png)
 
 
-SQLite is currently the database back end but the plan is to also connect to PostgreSQL at a later stage.
-
-Also toying with a middleware server to make it three-tiered:
+Database back ends supported are SQLite, PostgreSQL and
 [Hinterland](Hinterland)
