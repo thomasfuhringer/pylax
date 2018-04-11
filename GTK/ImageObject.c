@@ -105,7 +105,7 @@ GtkButton_ClickedCB(GtkButton* gtkWidget, gpointer pUserData)
 				g_free(sPictureBuffer);
 				if (!PxWidget_SetData(self, pyData))
 					return false;
-				Py_XDECREF(pyData);
+				//Py_XDECREF(pyData);
 			}
 			g_free(sFileName);
 			g_object_unref(gdkPixbuf);

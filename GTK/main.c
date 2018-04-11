@@ -340,6 +340,15 @@ OpenApp(char* sFileNamePath)
 	gtk_window_get_position(GTK_WINDOW(g.gtkMainWindow), &x, &y);
 	gtk_window_move(GTK_WINDOW(g.gtkMainWindow), x, y);   // trigger a configure-event
 
+	PyObject* pyOnLoadCB = PyObject_GetAttrString(pyUserModule, "on_load");
+	if (pyOnLoadCB) {
+		pyResult = PyObject_CallObject(pyOnLoadCB, NULL);
+		if (pyResult == NULL)
+			return false;
+		Py_DECREF(pyResult);
+		Py_DECREF(pyOnLoadCB);
+	}
+
 	gtk_action_set_sensitive(GTK_ACTION(g.gtkActionFileOpen), FALSE);
 	gtk_action_set_sensitive(GTK_ACTION(g.gtkActionFileClose), TRUE);
 	return true;

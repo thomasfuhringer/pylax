@@ -40,5 +40,5 @@ entryID.editFormat="{:,}"
 entryID.alignHoriz = pylax.Align.left
 entryName = pylax.Entry(form, -200, 90, -110, 20, dynaset=ds, column="name", dataType=str, label = pylax.Label(form, -300, 90, 70, 20, "Name"))
 
-#r = ds.execute({"Name": "%"})
-
+def on_load():      # this function gets called after the script has been loaded
+    r = ds.execute({"Name": "%"})
