@@ -13,8 +13,8 @@
 
 --------------
 
-Pylax is a database front end for SQLite and PostgreSQL that uses embedded 
-Python as scripting language.
+Pylax is a database front end for SQLite, PostgreSQL and MySQL
+that uses embedded Python as scripting language.
 
 To use Pylax you download the Linux binaries, extract them to a directory
 and execute *start.sh*.
@@ -191,8 +191,9 @@ Dynaset
     the SQL string used to pull data.
     If a *parent* :class:`Dynaset` is given it will be used to synchronize a master-detail
     relationship.
-    *connecion* can be a :class:`sqlite3.Connection` or :class:`psycopg2.extensions.connection``
-    or a `Hinterland` session to be used instead of the default connection 
+    *connecion* can be a :class:`sqlite3.Connection` or :class:`psycopg2.extensions.connection`
+    or :class:`mysql.connector.connection.MySQLConnection`
+    or a `Hinterland` session to be used instead of the default connection
     (which is to the SQLite database opened with the App file).
 
 
@@ -830,7 +831,7 @@ Image
 
     .. attribute:: scale
 
-        If :const:`True` the bitmap will be scaled to fit the current 
+        If :const:`True` the bitmap will be scaled to fit the current
         size of the widget.
 
 

@@ -207,6 +207,7 @@ GtkAppActivateEventCB(GtkApplication* app, gpointer gUserData)
 	//OpenApp("/media/tfu/OTG/Pylax/Apps/Southwind.pxa/Southwind.px");
 	//OpenApp("/media/tfu/OTG/Pylax/Apps/Test.pxa/Test.px");
 	//OpenApp("/media/tfu/OTG/Pylax/Apps/PostgreSQL.pxa/PostgreSQL.px");
+	//OpenApp("/media/tfu/OTG/Pylax/Apps/MySQL.pxa/MySQL.px");
 	//OpenApp("/media/tfu/OTG/Pylax/Apps/Hinterland.pxa/HinterlandTest.px");
 	//OpenApp("/media/tfu/OTG/Pylax/GTK/Test.px");
 }
@@ -320,16 +321,28 @@ OpenApp(char* sFileNamePath)
 	}
 
 	Hinterland_Init();
+    PyObject* pyModuleDict;
 
 	// check if script imported psycopg2 and obtain pointer to class 'connection'
 	g.pyPsycopg2ConnectionType = NULL;
-	PyObject* pyModuleDict = PyImport_GetModuleDict();
+	pyModuleDict = PyImport_GetModuleDict();
 	g.pyPsycopg2Module = PyDict_GetItemString(pyModuleDict, "psycopg2");
 	if (g.pyPsycopg2Module) {
-		PyObject* pyPsycopg2ExtensionsModule = (PyTypeObject*)PyObject_GetAttrString(g.pyPsycopg2Module, "extensions");
+		PyObject* pyPsycopg2ExtensionsModule = PyObject_GetAttrString(g.pyPsycopg2Module, "extensions");
 		g.pyPsycopg2ConnectionType = (PyTypeObject*)PyObject_GetAttrString(pyPsycopg2ExtensionsModule, "connection");
 		if (g.pyPsycopg2ConnectionType == NULL)
 			ErrorDialog("Cannot get Psycopg2 connection type");
+	}
+
+	// check if script imported mysql and obtain pointer to class 'connection'
+	g.pyMysqlConnectionType = NULL;
+	g.pyMysqlModule = PyDict_GetItemString(pyModuleDict, "mysql");
+	if (g.pyMysqlModule) {
+		PyObject* pyMysqlConnectorModule = PyObject_GetAttrString(g.pyMysqlModule, "connector");
+		PyObject* pyMysqlConnectionModule = PyObject_GetAttrString(pyMysqlConnectorModule, "connection");
+		g.pyMysqlConnectionType = (PyTypeObject*)PyObject_GetAttrString(pyMysqlConnectionModule, "MySQLConnection");
+		if (g.pyMysqlConnectionType == NULL)
+			ErrorDialog("Cannot get MySQL connection type");
 	}
 
 	gchar* sTitle = g_strconcat(sFileName, " - Pylax", NULL);
