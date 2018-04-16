@@ -885,7 +885,7 @@ PxDynaset_Write(PxDynasetObject* self)
 		if (pyRowDelete == Py_True && pyRowNew == Py_False) {
 			if (PyObject_TypeCheck(self->pyConnection, g.pySQLiteConnectionType) ||
 				(g.pyPsycopg2ConnectionType && PyObject_TypeCheck(self->pyConnection, g.pyPsycopg2ConnectionType)) ||
-                (g.pyMysqlConnectionType && PyObject_TypeCheck(self->pyConnection, g.pyMysqlConnectionType))) {
+				(g.pyMysqlConnectionType && PyObject_TypeCheck(self->pyConnection, g.pyMysqlConnectionType))) {
 				char* sArr[3] = { "DELETE FROM ", PyUnicode_AsUTF8(self->pyTable), " WHERE " };
 				sSql = StringArrayCat(sArr, 3);
 
@@ -967,7 +967,7 @@ PxDynaset_Write(PxDynasetObject* self)
 		else if (pyRowNew == Py_True) {
 			if (PyObject_TypeCheck(self->pyConnection, g.pySQLiteConnectionType) ||
 				(g.pyPsycopg2ConnectionType && PyObject_TypeCheck(self->pyConnection, g.pyPsycopg2ConnectionType)) ||
-                (g.pyMysqlConnectionType && PyObject_TypeCheck(self->pyConnection, g.pyMysqlConnectionType))) {
+				(g.pyMysqlConnectionType && PyObject_TypeCheck(self->pyConnection, g.pyMysqlConnectionType))) {
 				char* sArr[3] = { "INSERT INTO ", PyUnicode_AsUTF8(self->pyTable), " (" };
 				sSql = StringArrayCat(sArr, 3);
 				sSql2 = StringAppend(NULL, ") VALUES (");
@@ -1008,11 +1008,12 @@ PxDynaset_Write(PxDynasetObject* self)
 				memset(sSql2 + strlen(sSql2) - 1, '\0', 1);
 
 				if (self->pyAutoColumn && g.pyPsycopg2ConnectionType && PyObject_TypeCheck(self->pyConnection, g.pyPsycopg2ConnectionType)) {
-                    pyColumnName = PyStructSequence_GetItem(self->pyAutoColumn, PXDYNASETCOLUMN_NAME);
-                    sSql = StringAppend2(sSql, sSql2, ") RETURNING ");
-                    sSql = StringAppend2(sSql, PyUnicode_AsUTF8(pyColumnName), ";");
-				} else
-                    sSql = StringAppend2(sSql, sSql2, ");");
+					pyColumnName = PyStructSequence_GetItem(self->pyAutoColumn, PXDYNASETCOLUMN_NAME);
+					sSql = StringAppend2(sSql, sSql2, ") RETURNING ");
+					sSql = StringAppend2(sSql, PyUnicode_AsUTF8(pyColumnName), ";");
+				}
+				else
+					sSql = StringAppend2(sSql, sSql2, ");");
 
 				pyResult = PyObject_CallMethod(self->pyCursor, "execute", "(sO)", sSql, PyList_AsTuple(pyParams));
 				if (pyResult == NULL) {
@@ -1022,15 +1023,16 @@ PxDynaset_Write(PxDynasetObject* self)
 				Py_DECREF(pyResult);
 
 				if (self->pyAutoColumn) {
-                    if (g.pyPsycopg2ConnectionType && PyObject_TypeCheck(self->pyConnection, g.pyPsycopg2ConnectionType)) {
-                        pyResult = PyObject_CallMethod(self->pyCursor, "fetchone", NULL);
-                        if (pyResult == NULL) {
-                            PyErr_Print();
-                            return -1;
-                        }
-                        pyLastRowID = PyStructSequence_GET_ITEM(pyResult, 0);
-                    } else
-                        pyLastRowID = PyObject_GetAttrString(self->pyCursor, "lastrowid");
+					if (g.pyPsycopg2ConnectionType && PyObject_TypeCheck(self->pyConnection, g.pyPsycopg2ConnectionType)) {
+						pyResult = PyObject_CallMethod(self->pyCursor, "fetchone", NULL);
+						if (pyResult == NULL) {
+							PyErr_Print();
+							return -1;
+						}
+						pyLastRowID = PyStructSequence_GET_ITEM(pyResult, 0);
+					}
+					else
+						pyLastRowID = PyObject_GetAttrString(self->pyCursor, "lastrowid");
 					if (pyLastRowID == NULL) {
 						PyErr_Print();
 						return -1;
@@ -1046,7 +1048,7 @@ PxDynaset_Write(PxDynasetObject* self)
 						self->iLastRowID = PyLong_AsLong(pyLastRowID);
 						Py_XDECREF(tmp);
 						PxDynaset_UpdateAutoColumnInChildren(self, self->pyAutoColumn, pyLastRowID);
-                    }
+					}
 
 					if (g.pyPsycopg2ConnectionType && PyObject_TypeCheck(self->pyConnection, g.pyPsycopg2ConnectionType))
 						Py_XDECREF(pyResult);
@@ -1100,7 +1102,7 @@ PxDynaset_Write(PxDynasetObject* self)
 		else if (pyRowDataOld != Py_None) {
 			if (PyObject_TypeCheck(self->pyConnection, g.pySQLiteConnectionType) ||
 				(g.pyPsycopg2ConnectionType && PyObject_TypeCheck(self->pyConnection, g.pyPsycopg2ConnectionType)) ||
-                (g.pyMysqlConnectionType && PyObject_TypeCheck(self->pyConnection, g.pyMysqlConnectionType))) {
+				(g.pyMysqlConnectionType && PyObject_TypeCheck(self->pyConnection, g.pyMysqlConnectionType))) {
 				sSql = StringAppend(NULL, "UPDATE ");  // allocate on heap
 				sSql = StringAppend2(sSql, PyUnicode_AsUTF8(self->pyTable), " SET ");
 				sSql2 = StringAppend(NULL, " WHERE ");

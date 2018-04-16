@@ -193,8 +193,8 @@ PxImage_RenderData(PxImageObject* self)
 		long iHeightPix = gdk_pixbuf_get_height(gdkPixbuf);
 		long iWidth = gtk_widget_get_allocated_width(self->gtk);
 		long iHeight = gtk_widget_get_allocated_height(self->gtk);
-		float fWidthProportion = (float)iWidth / (float)iWidthPix;
-		float fHeightProportion = (float)iHeight / (float)iHeightPix;
+		float fWidthProportion = (float)iWidth / (float)(iWidthPix + 2);
+		float fHeightProportion = (float)iHeight / (float)(iHeightPix + 2);
 		float fFactor = fWidthProportion < fHeightProportion ? fWidthProportion : fHeightProportion;
 		/*g_debug("iWidthPix fHeightProportion %d %d", iWidthPix,iHeightPix);
 		g_debug("iWidth fHeightProportion %d %d", iWidth,iHeight);

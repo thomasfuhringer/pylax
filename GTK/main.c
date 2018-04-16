@@ -321,7 +321,7 @@ OpenApp(char* sFileNamePath)
 	}
 
 	Hinterland_Init();
-    PyObject* pyModuleDict;
+	PyObject* pyModuleDict;
 
 	// check if script imported psycopg2 and obtain pointer to class 'connection'
 	g.pyPsycopg2ConnectionType = NULL;

@@ -12,5 +12,5 @@ but switched to [GTK](GTK) because development went much faster.
 ![Item form screen shot](GTK/Screenshot%20Item.png)
 
 
-Database back ends supported are SQLite, PostgreSQL and
-[Hinterland](Hinterland)
+Database back ends supported are SQLite, PostgreSQL, MySQL and
+[Hinterland](Hinterland).
