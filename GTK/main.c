@@ -345,6 +345,16 @@ OpenApp(char* sFileNamePath)
 			ErrorDialog("Cannot get MySQL connection type");
 	}
 
+    // call funtion 'on_load' if it exists in script
+	if (PyObject_HasAttrString(pyUserModule, "on_load")) {
+        PyObject* pyOnLoadCB = PyObject_GetAttrString(pyUserModule, "on_load");
+		pyResult = PyObject_CallObject(pyOnLoadCB, NULL);
+		Py_DECREF(pyOnLoadCB);
+		if (pyResult == NULL)
+			return false;
+		Py_DECREF(pyResult);
+	}
+
 	gchar* sTitle = g_strconcat(sFileName, " - Pylax", NULL);
 	gtk_window_set_title(GTK_WINDOW(g.gtkMainWindow), sTitle);
 	g_free(sTitle);
@@ -352,15 +362,6 @@ OpenApp(char* sFileNamePath)
 	gint x, y, width, height;
 	gtk_window_get_position(GTK_WINDOW(g.gtkMainWindow), &x, &y);
 	gtk_window_move(GTK_WINDOW(g.gtkMainWindow), x, y);   // trigger a configure-event
-
-	PyObject* pyOnLoadCB = PyObject_GetAttrString(pyUserModule, "on_load");
-	if (pyOnLoadCB) {
-		pyResult = PyObject_CallObject(pyOnLoadCB, NULL);
-		if (pyResult == NULL)
-			return false;
-		Py_DECREF(pyResult);
-		Py_DECREF(pyOnLoadCB);
-	}
 
 	gtk_action_set_sensitive(GTK_ACTION(g.gtkActionFileOpen), FALSE);
 	gtk_action_set_sensitive(GTK_ACTION(g.gtkActionFileClose), TRUE);
