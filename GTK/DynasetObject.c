@@ -344,7 +344,6 @@ PxDynaset_SetData(PxDynasetObject* self, Py_ssize_t nRow, PyObject* pyColumn, Py
 	PyObject* pyRowDataOld = PyStructSequence_GetItem(pyRow, PXDYNASETROW_DATAOLD);
 	PyObject* pyRowNew = PyStructSequence_GetItem(pyRow, PXDYNASETROW_NEW);
 	PyObject* pyDataOld = NULL;
-	//g_debug("*---- PxDynaset_SetData");
 
 	if (pyRowDataOld == Py_None && pyRowNew == Py_False) { // keep a copy of the original data tuple
 		Py_ssize_t nSize = PyTuple_Size(pyRowData);

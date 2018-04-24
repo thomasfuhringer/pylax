@@ -55,7 +55,7 @@ def launch():
     ds.buttonUndo = pylax.Button(form, -150, -40, 60, 20, "Undo")
     ds.buttonSave = pylax.Button(form, -80, -40, 60, 20, "Save")
 
-    #r = ds.execute()
+    r = ds.execute()
     #ds.row = 0
 
 

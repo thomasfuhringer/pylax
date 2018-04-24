@@ -70,7 +70,7 @@ ActionHelpAboutCB(GtkAction* action, gpointer gUserData)
 	GStrv sAuthors[] = AUTHORS;
 	gtk_show_about_dialog(g.gtkMainWindow,
 		"program-name", "Pylax",
-		"comments", "Build date:  " __DATE__ "\n\nDatabase front end for SQLite",
+		"comments", "Build date:  " __DATE__ "\n\nDatabase front end for SQLite, PostgreSQL and MySQL",
 		"version", VER_PRODUCTVERSION_STR,
 		"authors", sAuthors,
 		"website", "https://github.com/thomasfuhringer/pylax",

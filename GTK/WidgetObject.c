@@ -388,7 +388,6 @@ PxWidget_SetData(PxWidgetObject* self, PyObject* pyData)
 
 	PxAttachObject(&self->pyData, pyData, true);
 	if (self->pyDynaset && /*!self->pyDynaset->bBroadcasting && */self->pyDataColumn && self->pyDynaset->nRow != -1) {
-		//g_debug("*---- PxWidget_SetData");
 		if (!PxDynaset_SetData(self->pyDynaset, self->pyDynaset->nRow, self->pyDataColumn, self->pyData))
 			return false;
 	}

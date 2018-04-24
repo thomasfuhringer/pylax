@@ -24,7 +24,7 @@ PxComboBox_init(PxComboBoxObject *self, PyObject *args, PyObject *kwds)
 	if (Py_TYPE(self)->tp_base->tp_init((PyObject *)self, args, kwds) < 0)
 		return -1;
 
-	g_debug("PxComboBox_init %d", self->bClean);
+	//g_debug("PxComboBox_init %d", self->bClean);
 	self->gtk = gtk_combo_box_text_new();
 	g_signal_connect(G_OBJECT(self->gtk), "destroy", G_CALLBACK(GtkWidget_DestroyCB), (gpointer)self);
 	gtk_widget_set_events(GTK_WIDGET(self->gtk), GDK_FOCUS_CHANGE_MASK);

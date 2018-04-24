@@ -4,6 +4,8 @@
 bool PxImage_RenderData(PxImageObject* self);
 static gboolean GtkButton_ClickedCB(GtkButton* gtkWidget, gpointer pUserData);
 static void RepositionCB(PxImageObject* self, GtkFixed* gtkFixedParent, Rect* pRect);
+bool PxImage_RenderData(PxImageObject* self);
+bool PxImage_SetData(PxImageObject* self, PyObject* pyData);
 
 static PyObject*
 PxImage_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
@@ -41,7 +43,7 @@ PxImage_init(PxImageObject* self, PyObject* args, PyObject* kwds)
 
 	g_object_set_qdata(self->gtk, g.gQuark, self);
 	gtk_widget_show_all(self->gtk);
-	gtk_widget_show(self->gtkButton);
+	//gtk_widget_show(self->gtkButton);
 	self->fnRepositionCB = RepositionCB;
 	PxWidget_Reposition(self);
 	return 0;
@@ -103,7 +105,7 @@ GtkButton_ClickedCB(GtkButton* gtkWidget, gpointer pUserData)
 			else {
 				pyData = PyBytes_FromStringAndSize(sPictureBuffer, nSize);
 				g_free(sPictureBuffer);
-				if (!PxWidget_SetData(self, pyData))
+				if (!PxImage_SetData(self, pyData))
 					return false;
 				//Py_XDECREF(pyData);
 			}
@@ -112,8 +114,8 @@ GtkButton_ClickedCB(GtkButton* gtkWidget, gpointer pUserData)
 		}
 	}
 
-	gtk_widget_destroy(gtkFileChooser);
 	g_object_unref(G_OBJECT(gtkFileFilter));
+	gtk_widget_destroy(gtkFileChooser);
 	return true;
 }
 
@@ -161,6 +163,8 @@ PxImage_SetData(PxImageObject* self, PyObject* pyData)
 		return true;
 	if (!PxWidget_SetData((PxWidgetObject*)self, pyData))
 		return false;
+	if (!self->pyDynaset)
+        return PxImage_RenderData(self);
 
 	return true;
 }
@@ -173,7 +177,6 @@ PxImage_RenderData(PxImageObject* self)
 	Py_ssize_t nSize;
 	char* sBuffer;
 
-	//g_debug("* PxImage_RenderData");
 	if (self->pyData == NULL || self->pyData == Py_None) {
 		gtk_image_set_from_pixbuf(self->gtkImage, g.gdkPixbufPlaceHolder);
 		return true;
