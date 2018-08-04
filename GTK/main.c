@@ -117,10 +117,53 @@ GtkAppActivateEventCB(GtkApplication* app, gpointer gUserData)
 	GtkWidget* gtkBox;
 	gint x, y, width, height;
 
+    const gchar* sCSS =
+    "label, entry {"
+    "        padding-top: 0px;"
+    "        padding-bottom: 0px;"
+    "        min-height: 20px;"
+    "        min-width: 20px;"
+    "}"
+    "entry {"
+    "        padding-left: 5px;"
+    "        padding-right: 5px;"
+    "}"
+    "button, .textview.view, .notebook tabs {"
+    "        padding-top: 2px;"
+    "        padding-bottom: 2px;"
+    "        padding-left: 2px;"
+    "        padding-right: 2px;"
+    "        min-height: 20px;"
+    "        min-width: 20px;"
+    "}"
+    "toolbar, statusbar {"
+    "    margin-top: 0px;"
+    "    margin-bottom: 0px;"
+    "    padding-top: 0px;"
+    "    padding-bottom: 0px;"
+    "    padding-left: 2px;"
+    "    min-height: 10px;"
+    "}"    
+    ".notebook.tab,"
+    ".textview.view,"
+    "scrolledwindow,"
+    ".button,"
+    ".entry {"
+    "    border-radius: 1px;"
+    "    border-style: solid;"
+    "    border-width: 1px;"    
+    "}";
+//https://askubuntu.com/questions/400979/how-to-change-gtk-notebook-tabs
+    GtkCssProvider* gtkCssProvider = gtk_css_provider_new();
+    gtk_css_provider_load_from_data(gtkCssProvider, sCSS, -1, NULL);
+    gtk_style_context_add_provider_for_screen(gdk_screen_get_default(), GTK_STYLE_PROVIDER(gtkCssProvider),
+                               GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+
 	g.gtkMainWindow = gtk_application_window_new(app);
 	gtk_window_set_title(GTK_WINDOW(g.gtkMainWindow), "Pylax");
-	GdkPixbuf* gdkPixbufIcon = gdk_pixbuf_new_from_file("App.ico", NULL);
-	//#include "Icon.c"
+    #include "AppIcon.xpm"
+	GdkPixbuf* gdkPixbufIcon = gdk_pixbuf_new_from_xpm_data(psIconXpm);
+
 	gtk_window_set_default_icon(gdkPixbufIcon);
 	g_signal_connect(G_OBJECT(g.gtkMainWindow), "delete-event", G_CALLBACK(GtkMainWindow_DeleteEventCB), g.gtkMainWindow);
 	g_signal_connect(G_OBJECT(g.gtkMainWindow), "configure-event", G_CALLBACK(GtkMainWindow_ConfigureEventCB), g.gtkMainWindow);
@@ -199,6 +242,7 @@ GtkAppActivateEventCB(GtkApplication* app, gpointer gUserData)
 	gtk_container_add(GTK_CONTAINER(g.gtkMainWindow), gtkBox);
 	gtk_widget_set_margin_top(GTK_WIDGET(g.gtkStatusbar), 0);
 	gtk_widget_set_margin_bottom(GTK_WIDGET(g.gtkStatusbar), 0);
+	gtk_widget_set_margin_left(GTK_WIDGET(g.gtkStatusbar), 0);
 
 	g.wcModulePathOld = Py_GetPath();
 	gtk_widget_show_all(g.gtkMainWindow);
@@ -247,10 +291,13 @@ OpenApp(char* sFileNamePath)
 		return;
 	}
 
+	#ifndef __MINGW32__
+    /*
 	if (readlink("/proc/self/exe", g.sExecutablePath, PATH_MAX) == -1) {
 		ErrorDialog("Could not determine path of program executable.");
 		return;
-	}
+	}*/
+	#endif
 
 	char *sFileName = sFileNamePath, *next;
 	while ((next = strpbrk(sFileName + 1, "\\/")))
@@ -258,10 +305,16 @@ OpenApp(char* sFileNamePath)
 	if (sFileNamePath != sFileName)
 		sFileName++;
 	memcpy(g.sAppPath, sFileNamePath, sFileName - sFileNamePath);
+	//g_debug(g.sAppPath);
 	// append to Python module library path
 	char* sModulePathOld = Py_EncodeLocale(g.wcModulePathOld, NULL);
-	char* sParts[3] = { sModulePathOld, ":", g.sAppPath };
+	#ifdef __MINGW32__
+		char* sParts[3] = { sModulePathOld, ";", g.sAppPath };
+	#else
+		char* sParts[3] = { sModulePathOld, ":", g.sAppPath };
+	#endif
 	char* sModulePath = StringArrayCat(sParts, 3);
+	g_debug(sModulePath);
 	wchar_t* swModulePath = Py_DecodeLocale(sModulePath, NULL);
 	if (swModulePath == NULL) {
 		PyErr_PrintEx(1);

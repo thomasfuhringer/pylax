@@ -34,8 +34,9 @@ PxTable_init(PxTableObject* self, PyObject* args, PyObject* kwds)
 	self->gtkListStore = gtk_list_store_new(1, G_TYPE_INT);
 
 	self->gtk = gtk_scrolled_window_new(NULL, NULL);
+	GtkWidget* gtkScrolledWindow = gtk_scrolled_window_new(NULL, NULL);
 	g_signal_connect(G_OBJECT(self->gtk), "destroy", G_CALLBACK(GtkWidget_DestroyCB), (gpointer)self);
-	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(self->gtk), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(gtkScrolledWindow), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 
 	self->gtkTreeView = gtk_tree_view_new_with_model(GTK_TREE_MODEL(self->gtkListStore));
 	gtk_tree_view_set_grid_lines(self->gtkTreeView, GTK_TREE_VIEW_GRID_LINES_BOTH);
@@ -43,7 +44,8 @@ PxTable_init(PxTableObject* self, PyObject* args, PyObject* kwds)
 	g_signal_connect(G_OBJECT(self->gtkTreeView), "focus-in-event", G_CALLBACK(GtkTreeView_FocusInEventCB), (gpointer)self);
 	g_object_unref(self->gtkListStore);   // tree view has acquired reference
 	gtk_tree_view_set_fixed_height_mode(self->gtkTreeView, TRUE);
-	gtk_container_add(GTK_CONTAINER(self->gtk), self->gtkTreeView);
+	gtk_container_add(GTK_CONTAINER(gtkScrolledWindow), self->gtkTreeView);
+	gtk_container_add(GTK_CONTAINER(self->gtk), gtkScrolledWindow);
 
 	gtk_fixed_put(self->pyParent->gtkFixed, self->gtk, 0, 0);
 	PxWidget_Reposition(self);

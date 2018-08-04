@@ -22,13 +22,11 @@ PxMarkDownEntry_init(PxMarkDownEntryObject* self, PyObject* args, PyObject* kwds
 	if (Py_TYPE(self)->tp_base->tp_init((PyObject*)self, args, kwds) < 0)
 		return -1;
 
-	self->gtk = gtk_frame_new(NULL);
-	GtkWidget* gtkScrolledWindow = gtk_scrolled_window_new(NULL, NULL);
-	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(gtkScrolledWindow), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+	self->gtk = gtk_scrolled_window_new(NULL, NULL);
+	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(self->gtk), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	self->gtkTextBuffer = gtk_text_buffer_new(NULL);
 	GtkWidget* gtkTextView = gtk_text_view_new_with_buffer(self->gtkTextBuffer);
-	gtk_container_add(GTK_CONTAINER(gtkScrolledWindow), gtkTextView);
-	gtk_container_add(GTK_CONTAINER(self->gtk), gtkScrolledWindow);
+	gtk_container_add(GTK_CONTAINER(self->gtk), gtkTextView);
 
 	g_signal_connect(G_OBJECT(self->gtk), "destroy", G_CALLBACK(GtkWidget_DestroyCB), (gpointer)self);
 	g_signal_connect(G_OBJECT(self->gtkTextBuffer), "changed", G_CALLBACK(GtkTextBuffer_ChangedCB), (gpointer)self);

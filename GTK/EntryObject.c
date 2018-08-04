@@ -29,6 +29,7 @@ PxEntry_init(PxEntryObject* self, PyObject* args, PyObject* kwds)
 	g_signal_connect(G_OBJECT(self->gtk), "changed", G_CALLBACK(GtkEntry_ChangedCB), (gpointer)self);
 	gtk_widget_set_events(GTK_WIDGET(self->gtk), GDK_FOCUS_CHANGE_MASK);
 	g_signal_connect(G_OBJECT(self->gtk), "focus-in-event", G_CALLBACK(GtkEntry_FocusInEventCB), (gpointer)self);
+    gtk_entry_set_width_chars(self->gtk, 1);
 
 	gtk_fixed_put(self->pyParent->gtkFixed, self->gtk, 0, 0);
 	PxWidget_Reposition(self);
