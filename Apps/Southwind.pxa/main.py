@@ -25,4 +25,4 @@ pylax.append_menu_item(pylax.MenuItem("Order", orderMenuItem__on_click))
 pylax.append_menu_item(pylax.MenuItem("Legal Entity", legalEntityMenuItem__on_click))
 
 #legalEntityMenuItem__on_click()
-#orderMenuItem__on_click()
+orderMenuItem__on_click()

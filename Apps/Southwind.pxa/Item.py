@@ -11,18 +11,19 @@ def launch():
     ds.add_column("Description", str)
     ds.add_column("Picture", bytes)
     ds.add_column("Parent", int)
-
-    selectionTable = pylax.Table(form, 20, 70, -340, -55, dynaset=ds, label = pylax.Label(form, 20, 50, 90, 20, "Select:"))
+    
+    selectionTable = pylax.Table(form, 12, 88, -344, -170, dynaset=ds, label = pylax.Label(form, 12, 60, 90, 24, "Select"))
     selectionTable.add_column("Name", 70, "Name")
     selectionTable.add_column("Description", 100, "Description")
+    selectionTable.showRowIndicator = True    
 
     imagePicture = pylax.Image(form, -330, 20, 320, 320, dynaset=ds, column="Picture")
 
-    ds.buttonEdit = pylax.Button(form, -360, -40, 60, 20, "Edit")
-    ds.buttonNew = pylax.Button(form, -290, -40, 60, 20, "New")
-    ds.buttonDelete = pylax.Button(form, -220, -40, 60, 20, "Delete")
-    ds.buttonUndo = pylax.Button(form, -150, -40, 60, 20, "Undo")
-    ds.buttonSave = pylax.Button(form, -80, -40, 60, 20, "Save")
+    ds.buttonEdit = pylax.Button(form, -328, -36, 60, 24, "Edit")
+    ds.buttonNew = pylax.Button(form, -264, -36, 60, 24, "New")
+    ds.buttonDelete = pylax.Button(form, -200, -36, 60, 24, "Delete")
+    ds.buttonUndo = pylax.Button(form, -136, -36, 60, 24, "Undo")
+    ds.buttonSave = pylax.Button(form, -72, -36, 60, 24, "Save")
 
     r = ds.execute()
 

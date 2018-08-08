@@ -11,30 +11,30 @@ def newWindowMenuItem__on_click():
     #form.set_icon_from_file("Lybniz.ico")
 
     # GUI
-    canvas = pylax.Canvas(form, 0, 110, 0, 0)
-    canvas.frame = True
+    canvas = pylax.Canvas(form, 0, 122, 0, 0)
+    #canvas.frame = True
 
-    entryY1 = pylax.Entry(form, 40, 10, -250, 20,  label = pylax.Label(form, 10, 10, 25, 20, "y1 ="))
+    entryY1 = pylax.Entry(form, 40, 10, -270, 24, label = pylax.Label(form, 10, 10, 25, 24, "y1 ="))
     entryY1.label.textColor = (0, 0, 255)
     entryY1.data = "sin(x)"
-    entryXMin = pylax.Entry(form, -200, 10, 70, 20, label = pylax.Label(form, -240, 10, 35, 20, "X min"), dataType=float)
+    entryXMin = pylax.Entry(form, -210, 10, 70, 24, label = pylax.Label(form, -260, 10, 35, 24, "X min"), dataType=float)
     entryXMin.data = -5.0
-    entryYMin = pylax.Entry(form, -80, 10, 70, 20, label = pylax.Label(form, -120, 10, 35, 20, "Y min"), dataType=float)
+    entryYMin = pylax.Entry(form, -80, 10, 70, 24, label = pylax.Label(form, -130, 10, 35, 24, "Y min"), dataType=float)
     entryYMin.data = -3.0
-    entryY2 = pylax.Entry(form, 40, 35, -250, 20,  label = pylax.Label(form, 10, 35, 25, 20, "y2 ="))
+    entryY2 = pylax.Entry(form, 40, 38, -270, 24,  label = pylax.Label(form, 10, 38, 25, 24, "y2 ="))
     entryY2.label.textColor = (10, 255, 10)
-    entryXMax = pylax.Entry(form, -200, 35, 70, 20, label = pylax.Label(form, -240, 35, 35, 20, "X max"), dataType=float)
+    entryXMax = pylax.Entry(form, -210, 38, 70, 24, label = pylax.Label(form, -260, 38, 35, 24, "X max"), dataType=float)
     entryXMax.data = 5.0
-    entryYMax = pylax.Entry(form, -80, 35, 70, 20, label = pylax.Label(form, -120, 35, 35, 20, "Y max"), dataType=float)
+    entryYMax = pylax.Entry(form, -80, 38, 70, 24, label = pylax.Label(form, -130, 38, 35, 24, "Y max"), dataType=float)
     entryYMax.data = 3.0
-    entryY3 = pylax.Entry(form, 40, 60, -250, 20,  label = pylax.Label(form, 10, 60, 25, 20, "y3 ="))
+    entryY3 = pylax.Entry(form, 40, 66, -270, 24,  label = pylax.Label(form, 10, 66, 25, 24, "y3 ="))
     entryY3.label.textColor = (255, 0, 0)
-    entryXScale = pylax.Entry(form, -200, 60, 70, 20, label = pylax.Label(form, -240, 60, 35, 20, "X scale"), dataType=float)
+    entryXScale = pylax.Entry(form, -210, 66, 70, 24, label = pylax.Label(form, -260, 66, 35, 24, "X scale"), dataType=float)
     entryXScale.data = 1.0
-    entryYScale = pylax.Entry(form, -80, 60, 70, 20, label = pylax.Label(form, -120, 60, 35, 20, "Y scale"), dataType=float)
+    entryYScale = pylax.Entry(form, -80, 66, 70, 24, label = pylax.Label(form, -130, 66, 35, 24, "Y scale"), dataType=float)
     entryYScale.data = 1.0
 
-    executeButton = pylax.Button(form, -50, 85, 40, 20, "&Plot")
+    executeButton = pylax.Button(form, -50, 94, 40, 24, "Plot")
     executeButton.defaultEnter = True;
 
     def canvas__on_paint(sender):
@@ -97,6 +97,7 @@ def newWindowMenuItem__on_click():
                     else:
                         if penDown:
                             canvas.line_to(i, yC)
+                            canvas.move_to(i, yC)
                         else:
                             canvas.move_to(i, yC)
                             penDown = True

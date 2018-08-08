@@ -20,7 +20,7 @@ def launch():
     labelFormCaption = pylax.Label(form, 1, 1, 40, 20, dynaset=ds, column="LastName", visible=False)
     labelFormCaption.captionClient = form # passes any assigment to property 'data' on to property 'caption' of the captionClient
 
-    comboBoxSearch = pylax.ComboBox(form, 90, 20, 50, 20, label = pylax.Label(form, 20, 20, 70, 20, "Search by"))
+    comboBoxSearch = pylax.ComboBox(form, 82, 12, 50, 20, label = pylax.Label(form, 12, 12, 70, 20, "Search by"))
     comboBoxSearch.append("ID")
     comboBoxSearch.append("Name")
     comboBoxSearch.data = "Name"
@@ -30,9 +30,10 @@ def launch():
     buttonSearch.on_click = buttonSearch__on_click
     buttonSearch.defaultEnter = True
 
-    selectionTable = pylax.Table(form, 20, 90, -360, -55, dynaset=ds, label = pylax.Label(form, 20, 70, 90, 20, "Select:"))
+    selectionTable = pylax.Table(form, 12, 88, -344, -170, dynaset=ds, label = pylax.Label(form, 12, 60, 90, 24, "Select"))
     selectionTable.add_column("First Name", 70, "FirstName")
     selectionTable.add_column("Last Name", 150, "LastName")
+    selectionTable.showRowIndicator = True
 
     imagePicture = pylax.Image(form, -260, 10, 150, 150, dynaset=ds, column="Picture")
 
@@ -41,7 +42,6 @@ def launch():
     entryID.alignHoriz = pylax.Align.left
     entryID.readOnly = True
 
-
     entryFirstName = pylax.Entry(form, -260, 210, 60, 20, dynaset=ds, column="FirstName", dataType=str, label = pylax.Label(form, -340, 210, 70, 20, "First Name"))
     entryLastName = pylax.Entry(form, -260, 240, 60, 20, dynaset=ds, column="LastName", dataType=str, label = pylax.Label(form, -340, 240, 70, 20, "Last Name"))
     #comboBox = pylax.ComboBox(form, -260, 270, 60, 20, dynaset=ds, column="PersonID", label = pylax.Label(form, -340, 270, 70, 20, "PersonID"))
@@ -49,11 +49,11 @@ def launch():
     #comboBox.append("One", 1)
     #comboBox.append("Two", 2)
 
-    ds.buttonEdit = pylax.Button(form, -360, -40, 60, 20, "Edit")
-    ds.buttonNew = pylax.Button(form, -290, -40, 60, 20, "New")
-    ds.buttonDelete = pylax.Button(form, -220, -40, 60, 20, "Delete")
-    ds.buttonUndo = pylax.Button(form, -150, -40, 60, 20, "Undo")
-    ds.buttonSave = pylax.Button(form, -80, -40, 60, 20, "Save")
+    ds.buttonEdit = pylax.Button(form, -328, -36, 60, 24, "Edit")
+    ds.buttonNew = pylax.Button(form, -264, -36, 60, 24, "New")
+    ds.buttonDelete = pylax.Button(form, -200, -36, 60, 24, "Delete")
+    ds.buttonUndo = pylax.Button(form, -136, -36, 60, 24, "Undo")
+    ds.buttonSave = pylax.Button(form, -72, -36, 60, 24, "Save")
 
     r = ds.execute()
     #ds.row = 0

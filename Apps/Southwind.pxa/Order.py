@@ -1,7 +1,7 @@
 ﻿import pylax
 import datetime
 
-#ds = None
+ds = None
 
 def launch():
     ds = pylax.Dynaset("SalesOrder", "SELECT OrderID, Customer, LE.Name AS CustomerName, OrderDate FROM SalesOrder JOIN le ON LeID=Customer WHERE LE.Name LIKE :Name ORDER BY OrderDate DESC LIMIT 100;")
@@ -18,45 +18,43 @@ def launch():
     dsOrderLine.add_column("Price", float)
     dsOrderLine.add_column("Amount", key=None)
     #dsOrderLine.autoExecute = False
-    print(dsOrderLine)
 
     form = pylax.Form(None, 20, 30, 640, 480, "Order", ds)
     #form.icon = pylax.Image("Order.ico")
     #form.minWidth, form.minHeight = 640, 400
     form.before_close=Form__before_close
-    labelFormCaption = pylax.Label(form, 2, 2, 20, 60, "FormCaption", dynaset=ds, column="CustomerName", visible = False)
+    labelFormCaption = pylax.Label(form, 2, 2, 20, 24, "FormCaption", dynaset=ds, column="CustomerName", visible=False)
     labelFormCaption.captionClient = form # passes any assigment to property 'data' on to property 'caption' of the captionClient
-    print(ds)
 
-    tableSelect = pylax.Table(form, 20, 44, -20, 100, dynaset=ds)
+    tableSelect = pylax.Table(form, 12, 44, -20, 100, dynaset=ds)
     tableSelect.add_column("Customer", 150, "CustomerName")
     tableSelect.add_column("ID", 30, "OrderID")
     tableSelect.add_column("Date", 90, "OrderDate", format="{:%y-%m-%d}")
     print(ds)
 
 
-    entrySearch = pylax.Entry(form, 90, 20, 120, 20, "Search Name") #, label = pylax.Label(form, 20, 20, 70, 20, "Search"))
+    entrySearch = pylax.Entry(form, 90, 12, 120, 24, "Search Name") #, label = pylax.Label(form, 20, 20, 70, 20, "Search"))
     #print(entrySearch.dataType)
-    ds.buttonSearch = pylax.Button(form, 220, 20, 20, 20, "⏎")
-    ds.buttonSearch.on_click = buttonSearch__on_click;
+    buttonSearch = pylax.Button(form, 220, 12, 20, 24, "⏎")
+    buttonSearch.on_click = buttonSearch__on_click;
 
-    entryID = pylax.Entry(form, 100, 160, 120, 20, dynaset=ds, column="OrderID", dataType=int, label = pylax.Label(form, 20, 160, 70, 20, "ID"))
-    entryDate = pylax.Entry(form, 100, 190, 120, 20, dynaset=ds, column="OrderDate", format="{:%Y-%m-%d %H:%M}", label = pylax.Label(form, 20, 190, 70, 20, "Date"))
+    entryID = pylax.Entry(form, 100, 160, 120, 24, dynaset=ds, column="OrderID", dataType=int, label = pylax.Label(form, 12, 160, 70, 24, "ID"))
+    entryDate = pylax.Entry(form, 100, 190, 120, 24, dynaset=ds, column="OrderDate", format="{:%Y-%m-%d %H:%M}", label = pylax.Label(form, 12, 190, 70, 24, "Date"))
     entryDate.editFormat = "{:%Y-%m-%d %H:%M:%S}"
-    entryCustomer = pylax.Entry(form, 330, 160, 120, 20, dynaset=ds, column="CustomerName", format="{:%Y-%m-%d %H:%M}", label = pylax.Label(form, 240, 160, 90, 20, "Customer"))
+    entryCustomer = pylax.Entry(form, 330, 160, 120, 24, dynaset=ds, column="CustomerName", format="{:%Y-%m-%d %H:%M}", label = pylax.Label(form, 240, 160, 90, 24, "Customer"))
     entryCustomer.validate = entryCustomer__validate
 
-    tableOrderLine = pylax.Table(form, 20, 220, -20, -80, dynaset=dsOrderLine)
+    tableOrderLine = pylax.Table(form, 12, 220, -20, -80, dynaset=dsOrderLine)
     tableOrderLine.add_column("Item ID", 50, "Item")
     tableOrderLine.add_column("Quantity", 50, "Quantity")
 
-    entryQuantity = pylax.Entry(form, 120, -70, 120, 20, dynaset=dsOrderLine, column="Quantity", label = pylax.Label(form, 20, -70, 90, 20, "Quantity"))
+    entryQuantity = pylax.Entry(form, 112, -70, 120, 24, dynaset=dsOrderLine, column="Quantity", label = pylax.Label(form, 12, -70, 90, 24, "Quantity"))
 
-    ds.buttonEdit = pylax.Button(form, -360, -40, 60, 20, "Edit")
-    ds.buttonNew = pylax.Button(form, -290, -40, 60, 20, "New")
-    ds.buttonDelete = pylax.Button(form, -220, -40, 60, 20, "Delete")
-    ds.buttonUndo = pylax.Button(form, -150, -40, 60, 20, "Undo")
-    ds.buttonSave = pylax.Button(form, -80, -40, 60, 20, "Save")
+    ds.buttonEdit = pylax.Button(form, -328, -36, 60, 24, "Edit")
+    ds.buttonNew = pylax.Button(form, -264, -36, 60, 24, "New")
+    ds.buttonDelete = pylax.Button(form, -200, -36, 60, 24, "Delete")
+    ds.buttonUndo = pylax.Button(form, -136, -36, 60, 24, "Undo")
+    ds.buttonSave = pylax.Button(form, -72, -36, 60, 24, "Save")
 
     r = ds.execute({"Name": entrySearch.data})
     #ds.row = 0
@@ -97,15 +95,15 @@ def entryCustomer__validate(widget, data):
     else:
         window = pylax.Window(None, 0, 0, 320, 220, "Select Customer", ds)
 
-        entrySearch= pylax.Entry(window, 20, 20, -70, 20, "Search Name")
+        entrySearch= pylax.Entry(window, 20, 20, -70, 24, "Search Name")
         entrySearch.data = data + "%"
-        ds.buttonSearch = pylax.Button(window, -60, 20, 20, 20, "⏎")
-        ds.buttonSearch.on_click = buttonSearch__on_click;
+        buttonSearch = pylax.Button(window, -60, 20, 20, 24, "⏎")
+        buttonSearch.on_click = buttonSearch__on_click;
 
         table = pylax.Table(window, 20, 60, -20, -70, dynaset=ds)
         table.add_column("Name", 150, "Name")
         table.add_column("ID", 30, "LeID")
-        ds.buttonOK = pylax.Button(window, -60, -50, 40, 20, "OK")
+        ds.buttonOK = pylax.Button(window, -60, -50, 40, 24, "OK")
         ds.buttonOK.on_click = buttonOK__on_click;
         r = ds.execute({"Name": entrySearch.data}, "SELECT LeID, Name FROM LE WHERE Name LIKE :Name;")
         return False
